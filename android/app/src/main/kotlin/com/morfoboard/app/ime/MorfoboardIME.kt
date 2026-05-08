@@ -5,17 +5,22 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
+import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
+import android.util.TypedValue
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowInsetsCompat
 import com.morfoboard.app.MainActivity
 import com.morfoboard.app.R
 import com.morfoboard.app.ai.AIAction
@@ -36,6 +41,11 @@ class MorfoboardIME : InputMethodService() {
         private const val TAG = "MorfoboardIME"
         // Production server IP
         private const val DEFAULT_BASE_URL = "http://43.156.68.104:8080"
+        
+        // Keyboard height configuration
+        private const val MIN_KEYBOARD_HEIGHT_DP = 220
+        private const val MAX_KEYBOARD_HEIGHT_DP = 320
+        private const val KEYBOARD_HEIGHT_PERCENTAGE = 0.38f // 38% of available height
     }
 
     private lateinit var rootLayout: FrameLayout
@@ -151,8 +161,13 @@ class MorfoboardIME : InputMethodService() {
         )
         mainLayout.addView(actionBarCtrl.view)
 
-        // Keyboard
+        // Keyboard with proper height calculation
         keyboardView = KeyboardView(this) { key -> handleKeyPress(key) }
+        val keyboardHeight = calculateOptimalKeyboardHeight()
+        keyboardView.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            keyboardHeight
+        )
         mainLayout.addView(keyboardView)
 
         rootLayout.addView(mainLayout)
@@ -160,8 +175,66 @@ class MorfoboardIME : InputMethodService() {
         // Bottom sheet presenter
         bottomSheetPresenter = BottomSheetPresenter(this, rootLayout)
 
-        Log.d(TAG, "onCreateInputView complete")
+        Log.d(TAG, "onCreateInputView complete - Keyboard height: ${keyboardHeight}px")
         return rootLayout
+    }
+
+    /**
+     * Calculate optimal keyboard height accounting for system UI and screen density.
+     * This fixes the overlap issue with navigation bar on high-resolution devices.
+     */
+    private fun calculateOptimalKeyboardHeight(): Int {
+        val displayMetrics = resources.displayMetrics
+        val screenHeight = displayMetrics.heightPixels
+        val density = displayMetrics.density
+        
+        // Get navigation bar height if available
+        val navigationBarHeight = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window?.window?.let { window ->
+                val insets = window.decorView.rootWindowInsets
+                insets?.getInsets(WindowInsets.Type.navigationBars())?.bottom ?: 0
+            } ?: getNavigationBarHeightFallback()
+        } else {
+            getNavigationBarHeightFallback()
+        }
+        
+        // Calculate available height (screen height minus navigation bar)
+        val availableHeight = screenHeight - navigationBarHeight
+        
+        // Calculate target height based on percentage of available space
+        val targetHeight = (availableHeight * KEYBOARD_HEIGHT_PERCENTAGE).toInt()
+        
+        // Convert DP limits to pixels
+        val minHeightPx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            MIN_KEYBOARD_HEIGHT_DP.toFloat(),
+            displayMetrics
+        ).toInt()
+        
+        val maxHeightPx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            MAX_KEYBOARD_HEIGHT_DP.toFloat(),
+            displayMetrics
+        ).toInt()
+        
+        // Clamp to min/max bounds
+        val finalHeight = targetHeight.coerceIn(minHeightPx, maxHeightPx)
+        
+        Log.d(TAG, "Screen: ${screenHeight}px, Nav bar: ${navigationBarHeight}px, Available: ${availableHeight}px, Keyboard: ${finalHeight}px (density: $density)")
+        
+        return finalHeight
+    }
+    
+    /**
+     * Fallback method to get navigation bar height for older Android versions.
+     */
+    private fun getNavigationBarHeightFallback(): Int {
+        val resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        return if (resourceId > 0) {
+            resources.getDimensionPixelSize(resourceId)
+        } else {
+            0
+        }
     }
 
     override fun onDestroy() {
