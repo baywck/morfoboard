@@ -80,29 +80,19 @@ func (h *Handler) Process(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Special action for testing sign-in
-	if req.Action == "login_test" {
-		resp := ProcessResponse{
-			Success: true,
-			Result:  "Authenticated as " + userInfo.Name + " (" + userInfo.Email + ")! Random string: " + generateRandomString(12),
-			Action:  req.Action,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+	// Validate action — only translate and fix_text are allowed
+	if req.Action != "translate" && req.Action != "fix_text" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "action must be 'translate' or 'fix_text'")
 		return
 	}
 
-	// Validate
+	// Validate text
 	if req.Text == "" {
 		writeError(w, http.StatusBadRequest, "invalid_request", "text is required")
 		return
 	}
 	if len(req.Text) > 5000 {
 		writeError(w, http.StatusBadRequest, "invalid_request", "text must be 5000 characters or less")
-		return
-	}
-	if req.Action != "translate" && req.Action != "fix_text" {
-		writeError(w, http.StatusBadRequest, "invalid_request", "action must be 'translate' or 'fix_text'")
 		return
 	}
 
