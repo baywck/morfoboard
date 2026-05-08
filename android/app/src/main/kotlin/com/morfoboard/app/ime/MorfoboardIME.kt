@@ -358,26 +358,41 @@ class MorfoboardIME : InputMethodService() {
 
     private fun getInputText(): String {
         val ic = currentInputConnection ?: return ""
-        val text = ic.getExtractedText(
-            android.view.inputmethod.ExtractedTextRequest(), 0
-        )
-        return text?.text?.toString() ?: ""
+        
+        val extracted = ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+        if (extracted?.text != null) {
+            return extracted.text.toString()
+        }
+        
+        // Fallback for apps that don't support getExtractedText well
+        val textBefore = ic.getTextBeforeCursor(5000, 0) ?: ""
+        val textAfter = ic.getTextAfterCursor(5000, 0) ?: ""
+        val selected = ic.getSelectedText(0) ?: ""
+        
+        return textBefore.toString() + selected.toString() + textAfter.toString()
     }
 
     private fun replaceInputText(newText: String) {
         val ic = currentInputConnection ?: return
         ic.beginBatchEdit()
-        val allText = getInputText()
-        if (allText.isNotEmpty()) {
-            ic.setSelection(0, allText.length)
-        }
+        
+        // Delete all text to reliably replace it
+        ic.deleteSurroundingText(10000, 10000)
         ic.commitText(newText, 1)
         ic.endBatchEdit()
     }
 
     private fun updateActionBarState() {
-        val text = getInputText()
-        actionBarCtrl.setTextState(text.isNotBlank())
+        val ic = currentInputConnection
+        val hasText = if (ic != null) {
+            val textBefore = ic.getTextBeforeCursor(100, 0) ?: ""
+            val textAfter = ic.getTextAfterCursor(100, 0) ?: ""
+            val selected = ic.getSelectedText(0) ?: ""
+            textBefore.isNotEmpty() || textAfter.isNotEmpty() || selected.isNotEmpty()
+        } else {
+            false
+        }
+        actionBarCtrl.setTextState(hasText)
     }
 
     private fun handleAIError(error: Throwable) {
