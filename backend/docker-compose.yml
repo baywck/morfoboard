@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  backend:
+    build: .
+    container_name: morfoboard-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - NINE_ROUTER_URL=${NINE_ROUTER_URL}
+      - NINE_ROUTER_API_KEY=${NINE_ROUTER_API_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

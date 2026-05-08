@@ -1,0 +1,46 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Keyboard body -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M24,42 L84,42 C86,42 88,44 88,46 L88,72 C88,74 86,76 84,76 L24,76 C22,76 20,74 20,72 L20,46 C20,44 22,42 24,42 Z"/>
+    <!-- Key rows -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,48 L36,48 L36,54 L28,54 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,48 L48,48 L48,54 L40,54 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,48 L60,48 L60,54 L52,54 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M64,48 L72,48 L72,54 L64,54 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M76,48 L80,48 L80,54 L76,54 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,58 L38,58 L38,64 L30,64 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,58 L50,58 L50,64 L42,64 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,58 L62,58 L62,64 L54,64 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M66,58 L78,58 L78,64 L66,64 Z"/>
+    <!-- Space bar -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,68 L72,68 L72,74 L36,74 Z"/>
+    <!-- AI sparkle accent -->
+    <path
+        android:fillColor="#6C63FF"
+        android:pathData="M78,36 L80,40 L84,42 L80,44 L78,48 L76,44 L72,42 L76,40 Z"/>
+</vector>

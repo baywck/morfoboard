@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#00C982</color>
+    <color name="primary_dark">#008F63</color>
+    <color name="background_dark">#111315</color>
+    <color name="keyboard_bg">#111315</color>
+    <color name="key_bg">#1C1F22</color>
+    <color name="key_bg_light">#2F3439</color>
+    <color name="key_bg_special">#30363C</color>
+    <color name="key_bg_pressed">#363C42</color>
+    <color name="key_text">#F3F6F8</color>
+    <color name="key_text_bright">#F7FFFB</color>
+    <color name="accent_blue">#2F3439</color>
+    <color name="accent_blue_pressed">#363C42</color>
+    <color name="accent_blue_glow">#00000000</color>
+    <color name="accent_green">#008F63</color>
+    <color name="accent_green_pressed">#00A873</color>
+    <color name="accent_green_glow">#00000000</color>
+    <color name="accent_red">#2F3439</color>
+    <color name="accent_red_pressed">#363C42</color>
+    <color name="accent_red_glow">#00000000</color>
+    <color name="action_bar_bg">#111315</color>
+    <color name="action_btn_bg">#181B1E</color>
+    <color name="action_btn_pressed">#24282D</color>
+    <color name="action_btn_text">#F3F6F8</color>
+    <color name="login_btn_bg">#E7ECEF</color>
+    <color name="login_btn_pressed">#D5DCE1</color>
+    <color name="login_btn_text">#111315</color>
+    <color name="text_primary">#F3F6F8</color>
+    <color name="text_secondary">#9AA4AD</color>
+    <color name="text_muted">#69727A</color>
+    <color name="surface_dark">#111315</color>
+    <color name="surface_elevated">#181B1E</color>
+    <color name="surface_border">#00000000</color>
+    <color name="loading">#00C982</color>
+
+    <color name="background">#111315</color>
+    <color name="surface">#181B1E</color>
+    <color name="action_btn">#181B1E</color>
+    <color name="action_btn_disabled">#151719</color>
+    <color name="bottom_sheet_bg">#111315</color>
+    <color name="bottom_sheet_divider">#24282D</color>
+    <color name="bottom_sheet_text">#F3F6F8</color>
+    <color name="error">#FF6B84</color>
+</resources>

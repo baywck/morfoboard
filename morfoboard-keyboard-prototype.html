@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Morfoboard Keyboard Prototype</title>
+  <style>
+    :root {
+      --bg: #0f1113;
+      --phone: #0f1113;
+      --surface: #111315;
+      --key: #1c1f22;
+      --key-2: #2f3439;
+      --key-3: #252a2f;
+      --ink: #f3f6f8;
+      --muted: #a8b0b7;
+      --dim: #69727a;
+      --blue: #2f3439;
+      --blue-2: #2f3439;
+      --green: #00c982;
+      --green-2: #00c982;
+      --red: #2f3439;
+      --red-2: #2f3439;
+      --line: rgba(255,255,255,0);
+      --line-soft: rgba(255,255,255,0);
+      --shadow: rgba(0,0,0,.42);
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      font-feature-settings: "cv01", "ss03";
+    }
+
+    .stage {
+      width: min(1180px, 100vw);
+      padding: 36px 24px;
+      display: grid;
+      grid-template-columns: 1fr 420px 1fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .notes {
+      color: var(--muted);
+      align-self: end;
+      padding-bottom: 40px;
+    }
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: .16em;
+      color: #76808a;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0 0 14px;
+      font-size: 38px;
+      line-height: .96;
+      letter-spacing: -1.2px;
+      font-weight: 560;
+      color: #f7f8f8;
+      text-wrap: balance;
+    }
+    .notes p { margin: 0; font-size: 14px; line-height: 1.7; max-width: 300px; }
+
+    .controls {
+      align-self: start;
+      padding-top: 58px;
+      display: grid;
+      gap: 10px;
+      justify-items: start;
+    }
+    .control {
+      appearance: none;
+      border: 0;
+      background: #181b1e;
+      color: var(--ink);
+      border-radius: 10px;
+      height: 38px;
+      padding: 0 13px;
+      font: 510 12px/1 var(--font);
+      cursor: pointer;
+    }
+    .control.active { background: #2f3439; }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      border-radius: 46px;
+      padding: 0;
+      background: var(--surface);
+      box-shadow: none;
+    }
+    .screen {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 46px;
+      background: var(--surface);
+      box-shadow: none;
+    }
+
+    .app-top {
+      height: 452px;
+      padding: 24px 18px;
+      background: #111315;
+    }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,.72);
+      margin-bottom: 34px;
+    }
+    .message-card {
+      margin-top: 72px;
+      padding: 16px;
+      border-radius: 18px;
+      background: #181b1e;
+      border: 0;
+      box-shadow: none;
+    }
+    .message-label { font: 500 11px/1 var(--mono); color: #737d86; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .message-line { height: 10px; border-radius: 99px; background: #24282d; margin: 9px 0; }
+    .message-line:nth-child(3) { width: 74%; }
+    .message-line:nth-child(4) { width: 42%; }
+
+    .keyboard-zone {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      background: var(--surface);
+      padding-top: 0;
+    }
+    .keyboard-zone::before {
+      content: "";
+      position: absolute;
+      left: 24px; right: 24px; top: -22px;
+      height: 44px;
+      pointer-events: none;
+      background: transparent;
+      filter: none;
+      opacity: 0;
+    }
+
+    .toolbar {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 2px 8px 2px;
+      background: var(--surface);
+      box-shadow: none;
+    }
+    .tool {
+      height: 25px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 8px;
+      border-radius: 6px;
+      border: 0;
+      background: #181b1e;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 560;
+      letter-spacing: -.08px;
+      box-shadow: none;
+    }
+    .tool svg { width: 13px; height: 13px; stroke-width: 1.65; opacity: .9; }
+    .tool.login { flex: 1; background: #e7ecef; color: #111315; border: 0; }
+    .tool.settings {
+      margin-left: auto;
+      width: 16px;
+      height: 16px;
+      min-width: 16px;
+      padding: 0;
+      background: transparent;
+      border-radius: 0;
+      color: #9aa4ad;
+    }
+    .tool.settings svg { width: 12px; height: 12px; }
+    .logged-out .tool.ai { display: none; }
+    .logged-in .tool.login { display: none; }
+
+    .keys {
+      position: relative;
+      display: grid;
+      gap: 5px;
+      padding: 0 7px 8px;
+    }
+    .row {
+      display: grid;
+      gap: 5px;
+      height: 44px;
+    }
+    .row.r1 { grid-template-columns: repeat(10, 1fr); }
+    .row.r2 { grid-template-columns: .45fr repeat(9, 1fr) .45fr; }
+    .row.r2 .key:first-child { grid-column: 2; }
+    .row.r3 { grid-template-columns: 1.35fr repeat(7, 1fr) 1.35fr; }
+    .row.r4 { grid-template-columns: 1.18fr 1fr 1fr 4.5fr .9fr 1.35fr; height: 46px; }
+
+    .key {
+      position: relative;
+      border: 0;
+      border-radius: 7px;
+      color: var(--ink);
+      background: var(--key);
+      font: 560 15px/1 var(--font);
+      letter-spacing: .035em;
+      display: grid;
+      place-items: center;
+      box-shadow: none;
+      user-select: none;
+      cursor: pointer;
+      transition: transform .13s cubic-bezier(.2,.8,.2,1), filter .13s;
+    }
+    .key::after {
+      content: "";
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      border: 0;
+      pointer-events: none;
+    }
+    .key.light { background: var(--key-2); }
+    .key.special { background: #30363c; color: #e4eaee; }
+    .key.blue { background: var(--key-2); box-shadow: none; }
+    .key.green { background: #008f63; color: #f7fffb; box-shadow: none; }
+    .key.hero { background: var(--key-2); box-shadow: none; }
+    .key.space { letter-spacing: 0; color: #7a838b; }
+    .key svg { width: 18px; height: 18px; stroke-width: 1.65; }
+    .key:active, .key.hovered { transform: translateY(1px) scale(.985); filter: brightness(1.13); }
+
+    .popup {
+      position: absolute;
+      z-index: 5;
+      left: 50%;
+      top: -54px;
+      transform: translateX(-50%) translateY(8px) scale(.88);
+      min-width: 45px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      padding: 0 13px;
+      border-radius: 13px;
+      color: white;
+      font-size: 23px;
+      font-weight: 620;
+      background: rgba(12,15,18,.80);
+      backdrop-filter: blur(18px) saturate(140%);
+      border: 0;
+      box-shadow: none;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .key.show .popup { animation: pop .42s cubic-bezier(.2,.8,.2,1); }
+    @keyframes pop {
+      0% { opacity: 0; transform: translateX(-50%) translateY(8px) scale(.88); }
+      28% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+      72% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(2px) scale(.97); }
+    }
+
+    .system-bar {
+      height: 34px;
+      display: grid;
+      place-items: center;
+      background: var(--surface);
+      padding-bottom: 8px;
+    }
+    .home-indicator {
+      width: 116px;
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.26);
+    }
+
+    @media (max-width: 900px) {
+      .stage { grid-template-columns: 1fr; justify-items: center; padding: 20px 12px; }
+      .notes, .controls { display: none; }
+      .phone { transform: scale(.92); transform-origin: center; }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <section class="notes">
+      <div class="eyebrow">Morfoboard / HTML study</div>
+      <h1>Integrated matte keyboard, not a floating card.</h1>
+      <p>Prototype ini sengaja dibuat sebagai playground visual dulu: surface menyatu, keycap compact, accent sebagai AI activity nodes, dan hijau hanya untuk N + O + A.</p>
+    </section>
+
+    <section class="phone" aria-label="Phone mockup">
+      <div class="screen">
+        <div class="app-top">
+          <div class="status"><span>22:31</span><span>5G 84%</span></div>
+          <div class="message-card">
+            <div class="message-label">Active text field</div>
+            <div class="message-line" style="width:88%"></div>
+            <div class="message-line"></div>
+            <div class="message-line"></div>
+          </div>
+        </div>
+
+        <div class="keyboard-zone logged-in" id="keyboardZone">
+          <div class="toolbar">
+            <button class="tool login" type="button"><span>G</span><span>Login with Google</span></button>
+            <button class="tool ai" type="button" aria-label="Translate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h9"/><path d="M9 3v2"/><path d="M6 9c1.2 2.2 3.2 3.8 6 4.8"/><path d="M12 5c-.7 3.4-2.6 6-6 8"/><path d="M14 19l3-7 3 7"/><path d="M15.2 16.5h3.6"/></svg>
+              <span>Translate</span>
+            </button>
+            <button class="tool ai" type="button" aria-label="Fix Text">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 7h9"/><path d="M5 12h7"/><path d="M5 17h5"/><path d="M15 16.5l2 2 4-5"/></svg>
+              <span>Fix Text</span>
+            </button>
+            <button class="tool settings" type="button" aria-label="Keyboard Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16"/><path d="M4 17h16"/><path d="M9 5v4"/><path d="M15 15v4"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg>
+            </button>
+          </div>
+
+          <div class="keys">
+            <div class="row r1">
+              <div class="key">Q<span class="popup">Q</span></div><div class="key light">W<span class="popup">W</span></div><div class="key">E<span class="popup">E</span></div><div class="key">R<span class="popup">R</span></div><div class="key">T<span class="popup">T</span></div><div class="key">Y<span class="popup">Y</span></div><div class="key">U<span class="popup">U</span></div><div class="key">I<span class="popup">I</span></div><div class="key green">O<span class="popup">O</span></div><div class="key">P<span class="popup">P</span></div>
+            </div>
+            <div class="row r2">
+              <div class="key green">A<span class="popup">A</span></div><div class="key">S<span class="popup">S</span></div><div class="key">D<span class="popup">D</span></div><div class="key light">F<span class="popup">F</span></div><div class="key">G<span class="popup">G</span></div><div class="key">H<span class="popup">H</span></div><div class="key light">J<span class="popup">J</span></div><div class="key">K<span class="popup">K</span></div><div class="key">L<span class="popup">L</span></div>
+            </div>
+            <div class="row r3">
+              <div class="key special"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg><span class="popup">⇧</span></div>
+              <div class="key light">Z<span class="popup">Z</span></div><div class="key light">X<span class="popup">X</span></div><div class="key">C<span class="popup">C</span></div><div class="key">V<span class="popup">V</span></div><div class="key light">B<span class="popup">B</span></div><div class="key green">N<span class="popup">N</span></div><div class="key light">M<span class="popup">M</span></div>
+              <div class="key special"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 6H9l-6 6 6 6h12z"/><path d="M12 9l6 6"/><path d="M18 9l-6 6"/></svg><span class="popup">⌫</span></div>
+            </div>
+            <div class="row r4">
+              <div class="key special">123<span class="popup">123</span></div>
+              <div class="key special"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.2 2.3 3.4 5.3 3.4 9s-1.2 6.7-3.4 9"/><path d="M12 3c-2.2 2.3-3.4 5.3-3.4 9s1.2 6.7 3.4 9"/></svg><span class="popup">◎</span></div>
+              <div class="key special"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12v.5"/><path d="M9 8v8"/><path d="M13 5v14"/><path d="M17 9v6"/><path d="M21 12v.5"/></svg><span class="popup">⌁</span></div>
+              <div class="key space">morfoboard<span class="popup"> </span></div>
+              <div class="key light">.<span class="popup">.</span></div>
+              <div class="key special"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 5v7a4 4 0 0 1-4 4H5"/><path d="M9 12l-4 4 4 4"/></svg><span class="popup">↵</span></div>
+            </div>
+          </div>
+          <div class="system-bar"><div class="home-indicator"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button class="control active" id="loginToggle">Logged-in toolbar</button>
+      <button class="control" id="hoverDemo">Preview key popup</button>
+      <button class="control" id="calmMode">Calm accent mode</button>
+    </section>
+  </main>
+
+  <script>
+    const zone = document.getElementById('keyboardZone');
+    const loginToggle = document.getElementById('loginToggle');
+    const hoverDemo = document.getElementById('hoverDemo');
+    const calmMode = document.getElementById('calmMode');
+
+    loginToggle.addEventListener('click', () => {
+      const loggedIn = zone.classList.toggle('logged-in');
+      zone.classList.toggle('logged-out', !loggedIn);
+      loginToggle.classList.toggle('active', loggedIn);
+      loginToggle.textContent = loggedIn ? 'Logged-in toolbar' : 'Logged-out toolbar';
+    });
+
+    hoverDemo.addEventListener('click', () => {
+      const m = document.querySelector('.key.hero');
+      m.classList.remove('show');
+      void m.offsetWidth;
+      m.classList.add('show', 'hovered');
+      setTimeout(() => m.classList.remove('show', 'hovered'), 460);
+    });
+
+    calmMode.addEventListener('click', () => {
+      document.body.classList.toggle('calm');
+      calmMode.classList.toggle('active');
+      document.querySelectorAll('.key.green').forEach((el, i) => {
+        if (document.body.classList.contains('calm')) {
+          if (i % 2 === 0) el.style.filter = 'saturate(.55) brightness(.82)';
+        } else el.style.filter = '';
+      });
+    });
+
+    document.querySelectorAll('.key').forEach(key => {
+      key.addEventListener('pointerdown', () => {
+        key.classList.remove('show');
+        void key.offsetWidth;
+        key.classList.add('show');
+        setTimeout(() => key.classList.remove('show'), 430);
+      });
+    });
+  </script>
+</body>
+</html>

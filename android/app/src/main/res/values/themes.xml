@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Morfoboard" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/action_btn</item>
+        <item name="colorPrimaryVariant">@color/action_btn</item>
+        <item name="colorOnPrimary">@color/key_text</item>
+        <item name="colorSecondary">@color/action_btn</item>
+        <item name="colorOnSecondary">@color/key_text</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorOnBackground">@color/text_primary</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+    </style>
+</resources>
