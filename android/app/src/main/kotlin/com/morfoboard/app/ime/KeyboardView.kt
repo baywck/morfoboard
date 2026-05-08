@@ -103,15 +103,16 @@ class KeyboardView(
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             
             // Text color logic
+            val isEmbossed = key.keyType == KeyType.SPACE || bgRes == R.drawable.key_bg_normal || bgRes == R.drawable.key_bg_blue
+            
             val textColor = when {
-                key.keyType == KeyType.SPACE -> context.getColor(R.color.text_secondary) // Embossed spacebar
-                bgRes == R.drawable.key_bg_green -> Color.parseColor("#A8E6CF") // Slightly green tint
-                bgRes == R.drawable.key_bg_normal -> Color.parseColor("#DFE6ED") // Off-white/silver instead of strict white
-                else -> context.getColor(R.color.key_text_bright) // Bright for specials/blue accents
+                isEmbossed -> context.getColor(R.color.text_secondary)
+                bgRes == R.drawable.key_bg_green -> Color.parseColor("#A8E6CF") // Bright green tint
+                else -> context.getColor(R.color.key_text_bright) // Bright for functional keys
             }
             setTextColor(textColor)
 
-            if (key.keyType == KeyType.SPACE) {
+            if (isEmbossed) {
                 alpha = 0.6f 
             }
 

@@ -26,8 +26,8 @@ class MorfoboardIME : InputMethodService() {
 
     companion object {
         private const val TAG = "MorfoboardIME"
-        // Updated to machine's local IP and correct port
-        private const val DEFAULT_BASE_URL = "http://192.168.1.2:8080"
+        // Production server IP
+        private const val DEFAULT_BASE_URL = "http://43.156.68.104:8080"
     }
 
     private lateinit var rootLayout: FrameLayout
