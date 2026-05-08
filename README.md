@@ -1,26 +1,46 @@
-# Morfoboard — AI-Powered Android Keyboard
+# Morfoboard — AI Writing Layer for Android
 
-Morfoboard adalah keyboard Android (IME) dengan kemampuan AI untuk membantu pengguna menulis lebih cepat, rapi, dan natural. Fokus awalnya adalah dua aksi yang paling sering dibutuhkan saat mengetik di aplikasi apa pun: menerjemahkan teks dan memperbaiki typo/grammar tanpa harus copy-paste ke aplikasi lain.
+Morfoboard is an AI-powered Android keyboard that brings translation, rewriting, and text correction directly into every app where people type. Instead of forcing users to copy text into a separate AI chatbot, Morfoboard embeds AI assistance at the input layer: WhatsApp, Telegram, Gmail, browsers, notes, CRMs, marketplaces, and any Android text field.
 
-Repository ini dipakai dengan strategi branch berikut:
+The product vision is simple: turn the keyboard into a private, fast, context-aware writing co-pilot.
 
-- `main` — branch utama untuk aplikasi Android keyboard.
-- `backend` — branch untuk service backend/proxy Morfoboard.
+Repository workflow:
 
-> Catatan: struktur folder saat ini masih memuat `android/` dan `backend/` agar pengembangan end-to-end tetap mudah. Secara operasional, `main` diperlakukan sebagai jalur Android dan `backend` sebagai jalur backend.
+- `main` — Android keyboard branch.
+- `backend` — backend/proxy branch.
 
-## Kenapa Morfoboard?
+> The repository currently keeps both `android/` and `backend/` folders so the product can be developed and tested end-to-end. Operationally, `main` is used as the Android branch and `backend` is used as the backend branch.
 
-Keyboard adalah titik paling dekat dengan niat pengguna. Kalau AI hanya tersedia di aplikasi chat terpisah, pengguna harus berpindah konteks: copy teks, buka AI, prompt, salin hasil, kembali ke aplikasi asal. Morfoboard memindahkan AI ke tempat pengguna benar-benar menulis.
+## What Morfoboard Solves
 
-Target produk:
+AI writing tools are powerful, but the workflow is still broken. Users usually need to:
 
-- Membantu pengguna bilingual/multilingual menulis lebih percaya diri.
-- Membuat koreksi teks terasa instan, bukan workflow tambahan.
-- Menjadi keyboard produktivitas yang ringan, privat, dan bisa dikendalikan sendiri backend/model-nya.
-- Mengarah ke konsep AI writing layer di atas semua aplikasi Android.
+1. Select or copy text from an app.
+2. Open an AI chatbot.
+3. Write a prompt.
+4. Wait for the response.
+5. Copy the result back.
+6. Fix formatting or tone manually.
 
-## Arsitektur
+That context switching is too slow for daily messaging, customer replies, school communication, professional email, marketplace chats, and multilingual conversations.
+
+Morfoboard removes the friction by moving AI to the point of intent: the keyboard. Users can translate, fix, rewrite, and improve text without leaving the app they are already using.
+
+## Product Positioning
+
+Morfoboard is not just “a keyboard with AI buttons.” It is an AI writing layer for Android.
+
+The long-term opportunity is to become the universal text productivity interface across mobile apps, especially for users who write across Indonesian, English, and mixed-language contexts.
+
+Core principles:
+
+- Fast first: typing must feel as responsive as a normal keyboard.
+- Privacy by design: sensitive fields should never be processed without explicit user control.
+- Context-aware: show the right AI actions at the right moment instead of exposing a crowded menu.
+- Indonesian-first intelligence: support formal Indonesian, casual Indonesian, business tone, marketplace replies, school communication, and Indo-English writing.
+- User-controlled AI: support self-hosted or bring-your-own AI endpoints instead of forcing vendor lock-in.
+
+## Architecture
 
 ```text
 ┌─────────────────┐     HTTPS      ┌──────────────────┐     HTTP/S     ┌─────────────┐
@@ -29,67 +49,97 @@ Target produk:
 └─────────────────┘                └──────────────────┘                └─────────────┘
 ```
 
-### Komponen
+### Components
 
-| Komponen | Teknologi | Fungsi |
+| Component | Technology | Purpose |
 |---|---|---|
-| Android App | Kotlin, InputMethodService | Keyboard UI, input text, voice input, settings, AI actions |
-| Backend | Go, net/http | Auth verification, AI proxy, rate limiting, user tracking, blacklist |
-| AI Router | 9router / OpenAI-compatible API | LLM inference untuk translate dan fix text |
-| Auth | Google Sign-In | Identitas user dan akses aman ke backend |
+| Android App | Kotlin, InputMethodService | Custom keyboard UI, text input, AI actions, voice input, settings |
+| Backend | Go, net/http | Auth verification, AI proxy, rate limiting, user tracking, blacklist controls |
+| AI Router | 9router / OpenAI-compatible API | LLM inference for translation and text correction |
+| Auth | Google Sign-In | User identity and secure access to the backend |
 
-## Fitur Saat Ini
+## AI-Driven Workflow
 
-- Full custom Android keyboard berbasis `InputMethodService`.
-- QWERTY keyboard dengan shift, backspace, enter, space, symbols, numbers.
-- AI Translate untuk menerjemahkan teks langsung dari keyboard.
-- AI Fix Text untuk memperbaiki typo, grammar, dan struktur kalimat.
+Morfoboard uses an AI-driven input workflow:
+
+1. The Android IME reads the active text context through `InputConnection`.
+2. The user triggers an AI action such as Translate or Fix Text from the keyboard toolbar.
+3. The client validates connectivity, authentication, selected language, selected tone, and current text.
+4. The request is sent to the Go backend with a strict action schema.
+5. The backend verifies the Google ID token, checks user status and blacklist rules, applies request limits, and builds a controlled prompt for the selected action.
+6. The backend forwards the request to an OpenAI-compatible model endpoint through 9router.
+7. The result returns to the keyboard as a structured response.
+8. Morfoboard displays the output in a lightweight keyboard-level result sheet.
+9. The user can replace the original text, dismiss it, or continue typing.
+
+This creates a closed-loop AI workflow inside the typing experience: capture context, reason through the requested transformation, return a safe structured result, and let the user apply it immediately.
+
+## Current Features
+
+- Custom Android keyboard built with `InputMethodService`.
+- Full QWERTY layout with shift, backspace, enter, space, symbols, and numbers.
+- AI Translate directly from the keyboard.
+- AI Fix Text for grammar, spelling, typo, and sentence improvements.
 - Tone selection: casual, natural, formal, professional.
-- Google Sign-In dengan penyimpanan token terenkripsi.
-- Dark/light theme support.
-- Color palette, key shape preset, dan keyboard size setting.
+- Google Sign-In with encrypted token storage.
+- Dark and light theme support.
+- Color palettes, key shape presets, and keyboard size settings.
 - Native speech recognition / voice input.
-- Offline detection sebelum menjalankan aksi AI.
-- Backend proxy dengan validasi action agar hanya `translate` dan `fix_text` yang diterima.
-- User tracking dan blacklist system di backend.
-- Docker support untuk deployment backend.
+- Offline detection before AI requests.
+- Backend proxy that only accepts valid actions such as `translate` and `fix_text`.
+- User tracking and blacklist system in the backend.
+- Docker support for backend deployment.
 
-## Struktur Project
+## Why This Can Win
+
+Most mobile AI products live outside the actual writing surface. Morfoboard lives inside the writing surface.
+
+That gives it several advantages:
+
+- Lower friction than chatbot-based workflows.
+- Works across almost every Android app.
+- Can become a habit because it sits in the default typing path.
+- Can support personal, professional, and business communication from one interface.
+- Can evolve into a team-controlled writing layer with glossary, tone guide, templates, and private AI endpoints.
+
+The strongest wedge is Indonesian-first AI writing. Many tools handle English well, but fewer tools understand Indonesian business tone, casual chat, marketplace replies, school communication, and natural Indo-English switching. Morfoboard can own that local intelligence layer.
+
+## Project Structure
 
 ```text
 .
-├── android/                  # Aplikasi Android IME
+├── android/                  # Android IME application
 │   ├── app/src/main/kotlin/com/morfoboard/app/
-│   │   ├── MainActivity.kt   # Setup screen untuk enable/switch keyboard
+│   │   ├── MainActivity.kt   # Setup screen for enabling/switching keyboard
 │   │   ├── ime/              # MorfoboardIME, keyboard view, action bar
-│   │   ├── ai/               # AI client dan model request/response
-│   │   ├── auth/             # Google auth/token manager
-│   │   ├── settings/         # Settings activity dan preference store
+│   │   ├── ai/               # AI client and request/response models
+│   │   ├── auth/             # Google auth and token manager
+│   │   ├── settings/         # Settings activity and preference store
 │   │   └── network/          # Connectivity monitor
-│   └── gradle/               # Gradle wrapper dan version catalog
+│   └── gradle/               # Gradle wrapper and version catalog
 ├── backend/                  # Go backend service
-│   ├── cmd/server/           # Entrypoint server
-│   ├── internal/proxy/       # Handler AI proxy
-│   ├── internal/users/       # User tracking/blacklist
+│   ├── cmd/server/           # Server entrypoint
+│   ├── internal/proxy/       # AI proxy handler
+│   ├── internal/users/       # User tracking and blacklist logic
 │   ├── Dockerfile
 │   └── docker-compose.yml
 └── README.md
 ```
 
-## Setup Development
+## Development Setup
 
 ### Prerequisites
 
-1. Android Studio atau Android SDK CLI.
+1. Android Studio or Android SDK CLI.
 2. Android device/emulator API 26+.
-3. Go 1.22+ untuk backend.
-4. VPS atau endpoint OpenAI-compatible seperti 9router.
-5. Google Cloud Console project dengan:
+3. Go 1.22+ for backend development.
+4. VPS or OpenAI-compatible endpoint such as 9router.
+5. Google Cloud Console project with:
    - Google Sign-In enabled.
    - OAuth 2.0 Web Client ID.
-   - SHA-1 fingerprint debug/release terdaftar.
+   - Debug/release SHA-1 fingerprint registered.
 
-Debug SHA-1 yang pernah dipakai di environment lokal:
+Debug SHA-1 used in the local development environment:
 
 ```text
 2F:80:F9:F7:CE:9B:54:0C:25:FB:97:A6:D9:A8:70:0B:5C:4E:59:70
@@ -100,7 +150,7 @@ Debug SHA-1 yang pernah dipakai di environment lokal:
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env sesuai endpoint/model/key yang digunakan.
+# Edit .env with your endpoint, model, API key, and Google client ID.
 
 go run ./cmd/server
 ```
@@ -112,7 +162,7 @@ cd backend
 docker compose up --build
 ```
 
-Environment utama backend biasanya mencakup:
+Typical backend environment variables:
 
 ```text
 PORT=8080
@@ -129,15 +179,15 @@ cd android
 ./gradlew installDebug
 ```
 
-Setelah APK terinstall:
+After installing the APK:
 
-1. Buka aplikasi Morfoboard.
-2. Pilih `Enable Morfoboard` untuk membuka Android keyboard settings.
-3. Aktifkan Morfoboard.
-4. Pilih `Switch to Morfoboard` untuk menjadikannya keyboard aktif.
-5. Login Google jika ingin memakai fitur AI.
+1. Open the Morfoboard app.
+2. Tap `Enable Morfoboard` to open Android keyboard settings.
+3. Enable Morfoboard.
+4. Tap `Switch to Morfoboard` to make it the active keyboard.
+5. Sign in with Google to use AI features.
 
-ADB helper:
+ADB helper commands:
 
 ```bash
 adb shell ime list -a
@@ -170,12 +220,12 @@ Content-Type: application/json
 }
 ```
 
-Action yang valid:
+Valid actions:
 
 - `translate`
 - `fix_text`
 
-Contoh response:
+Example response:
 
 ```json
 {
@@ -189,9 +239,9 @@ Contoh response:
 
 ## Branch Workflow
 
-### Android branch (`main`)
+### Android Branch (`main`)
 
-Gunakan `main` untuk pekerjaan Android:
+Use `main` for Android work:
 
 ```bash
 git checkout main
@@ -199,18 +249,18 @@ cd android
 ./gradlew assembleDebug
 ```
 
-Contoh fokus pekerjaan:
+Typical scope:
 
 - Keyboard UI/UX.
 - IME lifecycle stability.
 - Voice input.
-- Settings dan personalization.
+- Settings and personalization.
 - Android auth/token handling.
 - AI client integration.
 
-### Backend branch (`backend`)
+### Backend Branch (`backend`)
 
-Gunakan `backend` untuk pekerjaan backend:
+Use `backend` for backend work:
 
 ```bash
 git checkout backend
@@ -219,117 +269,89 @@ go test ./...
 go run ./cmd/server
 ```
 
-Contoh fokus pekerjaan:
+Typical scope:
 
 - AI proxy.
 - Auth verification.
 - User tracking.
-- Rate limiting dan abuse prevention.
-- Deployment Docker/VPS.
-- Observability dan logs.
+- Rate limiting and abuse prevention.
+- Docker/VPS deployment.
+- Observability and logging.
 
-## Rencana Pengembangan Kedepan
+## Product Roadmap
 
-### Phase 1 — Stabilitas Keyboard Core
+### Phase 1 — Keyboard Core Stability
 
-- Perkuat lifecycle IME: pastikan tidak crash saat pindah field, rotate screen, switch app, atau keyboard picker.
-- Improve text extraction/replacement agar konsisten di WhatsApp, Telegram, browser, notes, Gmail, dan editor web.
-- Tambahkan test matrix device: low-end Android, high DPI, tablet kecil, dan emulator.
-- Polish haptic, sound, long press, cursor movement, dan key repeat.
-- Tambahkan fallback ketika `InputConnection` tidak memberi full text.
+- Harden the IME lifecycle so it does not crash when switching fields, rotating screens, switching apps, or opening the keyboard picker.
+- Improve text extraction and replacement across WhatsApp, Telegram, browsers, notes, Gmail, and web editors.
+- Build a test matrix for low-end Android devices, high-DPI screens, compact phones, and emulators.
+- Polish haptics, sound, long press behavior, cursor movement, and key repeat.
+- Add fallback behavior when `InputConnection` cannot provide full text context.
 
-### Phase 2 — AI Experience yang Lebih Cepat dan Natural
+### Phase 2 — Faster and More Natural AI UX
 
-- Streaming response atau progressive loading agar AI terasa hidup, bukan menunggu kosong.
-- Preset rewrite: pendekkan, panjangkan, lebih sopan, lebih santai, lebih profesional.
-- Smart language detection sebelum translate.
-- Quick action chip berdasarkan konteks: “Fix”, “Translate to EN”, “Make formal”.
-- Local cache untuk hasil terakhir agar pengguna bisa undo/redo.
-- Safety guard agar AI tidak mengubah maksud teks terlalu jauh.
+- Add streaming or progressive loading so AI actions feel responsive.
+- Add rewrite presets: shorten, expand, make polite, make casual, make professional.
+- Add smart language detection before translation.
+- Show contextual quick actions such as “Fix”, “Translate to English”, or “Make Formal”.
+- Add local undo/redo for the last AI replacement.
+- Add safety guards so AI does not change the user’s meaning too aggressively.
 
-### Phase 3 — Personalization dan Premium Keyboard Feel
+### Phase 3 — Personalization and Premium Keyboard Feel
 
-- Theme builder yang tetap premium: matte dark, light clean, compact, tanpa neon/RGB berlebihan.
-- Per-app preference: misalnya tone formal untuk Gmail/LinkedIn, casual untuk WhatsApp.
-- Personal dictionary dan custom phrase snippets.
-- Clipboard manager privat dengan mode auto-expire.
-- Custom toolbar layout: user bisa pilih action mana yang muncul.
+- Add a premium theme builder: matte dark, clean light, compact layout, no distracting neon/RGB styling.
+- Add per-app preferences: formal tone for Gmail/LinkedIn, casual tone for WhatsApp, etc.
+- Add personal dictionary and custom phrase snippets.
+- Add a private clipboard manager with auto-expiring entries.
+- Let users customize the toolbar actions.
 
-### Phase 4 — Privacy, Trust, dan BYO AI
+### Phase 4 — Privacy, Trust, and BYO AI
 
-- Mode “Bring Your Own AI”: user memasukkan endpoint/key sendiri.
-- On-device rules untuk menentukan teks mana yang tidak boleh dikirim ke server.
-- Private mode per aplikasi: disable AI di banking/password/OTP fields.
-- Transparent AI log: tampilkan request metadata tanpa menyimpan isi sensitif.
-- Data retention policy yang jelas di README dan app onboarding.
+- Add Bring Your Own AI endpoint/key support.
+- Add on-device rules that decide which text is never sent to the server.
+- Add private mode for banking, password, OTP, and sensitive fields.
+- Add transparent AI metadata logs without storing sensitive content.
+- Publish a clear data retention policy inside the README and onboarding flow.
 
 ### Phase 5 — Backend Production Hardening
 
-- Rate limiting per user/device/IP.
-- Quota dan usage dashboard.
-- Request tracing dengan request ID.
-- Structured logs dan metrics.
-- Admin blacklist/allowlist dashboard.
-- Model routing: cepat untuk fix typo, lebih pintar untuk rewrite kompleks.
-- Cost control: max token, timeout, retry policy, circuit breaker.
+- Add rate limiting per user, device, and IP.
+- Add quota and usage dashboard.
+- Add request tracing with request IDs.
+- Add structured logs and metrics.
+- Add admin blacklist/allowlist dashboard.
+- Add model routing: fast model for typo fixes, stronger model for complex rewrites.
+- Add cost control through max tokens, timeout, retry policy, and circuit breakers.
 
-### Phase 6 — Distribution dan Growth
+### Phase 6 — Distribution and Growth
 
-- Signed release build dan release notes otomatis.
-- Landing page dengan demo GIF/video.
-- Closed testing Play Store.
-- Feedback loop dalam app: laporkan bug, request fitur, kirim rating UX.
-- Template prompt untuk komunitas: bahasa Indonesia, English, bisnis, akademik, coding.
+- Add signed release builds and automatic release notes.
+- Build a landing page with demo GIFs/videos.
+- Launch closed testing on Google Play.
+- Add in-app feedback for bug reports and feature requests.
+- Create prompt/template packs for Indonesian, English, business, academic, marketplace, and customer support writing.
 
-## Masukan Strategis untuk Membuat Morfoboard Lebih Keren
+## Strategic Product Ideas
 
-1. Jadikan Morfoboard bukan sekadar “keyboard + tombol AI”, tapi “writing co-pilot layer” untuk seluruh Android.
+1. Turn Morfoboard into a universal Android writing co-pilot, not just a keyboard utility.
 
-   Diferensiasinya bukan jumlah fitur, tapi seberapa cepat pengguna bisa memperbaiki niat menulis tanpa keluar dari aplikasi yang sedang dipakai.
+2. Make micro-interactions extremely fast. If AI takes a few seconds, the keyboard should show compact loading, cancellation, and non-blocking result previews.
 
-2. Fokus ke micro-interaction yang super cepat.
+3. Use context-aware actions instead of a long AI menu. Short text can show Fix and Translate. Formal long text can show Shorten, Make Polite, or Summarize. Mixed Indonesian-English text can show Naturalize.
 
-   Keyboard harus terasa instan. Kalau AI butuh 2-5 detik, UI harus memberi feedback yang elegan: loading compact, bisa cancel, hasil muncul di bottom sheet yang tidak mengganggu mengetik.
+4. Make privacy a selling point. Users are naturally cautious about keyboards because keyboards see everything. Morfoboard should win trust through private mode, BYO endpoints, transparent request metadata, and sensitive-field protections.
 
-3. Buat “AI actions” berbasis konteks, bukan menu panjang.
+5. Build Indonesian-first intelligence. Support formal Indonesian, casual Indonesian, Jaksel-style mixed language, marketplace replies, school communication, and professional office tone.
 
-   Saat teks pendek: tampilkan Fix dan Translate. Saat teks formal panjang: tampilkan Summarize, Make Polite, Shorten. Saat ada campuran Indo-English: tampilkan Naturalize. Ini membuat Morfoboard terasa pintar tanpa terlihat ribet.
+6. Add quick templates for high-frequency use cases: customer replies, invoice follow-ups, sick leave requests, product captions, polite complaints, teacher/student messages, and job applications.
 
-4. Jadikan privasi sebagai selling point.
+7. Prioritize typing feel before visual complexity. Great keyboards win through accuracy, spacing, key feedback, comfortable backspace, and low typo rates.
 
-   Banyak keyboard populer terasa menyeramkan karena semua yang diketik melewati keyboard. Morfoboard bisa unggul dengan private mode, BYO endpoint, transparansi request, dan policy “password/OTP/banking fields tidak diproses AI”.
+8. Prepare for hybrid on-device AI. Lightweight typo fixes and suggestions can eventually run locally, while complex rewrites and translations go to the server.
 
-5. Bangun “Indonesian-first intelligence”.
+9. Explore “Morfoboard for Teams.” Companies could define tone guides, glossaries, forbidden words, approved templates, and private model endpoints.
 
-   Banyak AI writing tool bagus untuk English, tapi kurang natural untuk Bahasa Indonesia, Jaksel style, formal kantor Indonesia, chat marketplace, caption UMKM, atau bahasa guru/siswa. Morfoboard bisa punya moat di gaya bahasa lokal.
-
-6. Tambahkan mode “template cepat”.
-
-   Contoh: balas customer, follow-up invoice, izin sakit, caption produk, chat dosen/guru, lamaran kerja, complaint sopan. Ini bisa jadi fitur premium yang sangat praktis.
-
-7. Jangan terlalu banyak fitur visual dulu.
-
-   Keyboard yang bagus menang di feel: layout presisi, spacing enak, typo rendah, backspace nyaman, prediction/action cepat. Visual premium penting, tapi typing accuracy lebih penting.
-
-8. Siapkan jalan menuju on-device AI.
-
-   Untuk versi awal backend proxy sudah benar. Tapi roadmap jangka panjang bisa hybrid: typo ringan dan suggestion pendek di device, rewrite/translate kompleks ke server. Ini akan mengurangi latency dan biaya.
-
-9. Buat “Morfoboard for Teams”.
-
-   B2B-nya menarik: perusahaan bisa punya tone guide, glossary, forbidden words, customer support templates, dan model endpoint sendiri. Keyboard jadi brand communication layer.
-
-10. Ukur metrik yang benar.
-
-   Jangan hanya MAU/DAU. Ukur: AI action success rate, replacement rate, cancel rate, latency p95, crash-free sessions, average characters processed, dan repeat action per user. Itu metrik yang benar-benar menunjukkan value keyboard.
-
-## Prinsip Produk
-
-- Fast first: typing tidak boleh kalah cepat dari keyboard biasa.
-- Privacy by design: jangan proses teks sensitif tanpa izin eksplisit.
-- Context-aware: fitur muncul sesuai kebutuhan, bukan semua ditampilkan sekaligus.
-- Indonesian-friendly: natural untuk bahasa Indonesia formal, santai, dan campuran.
-- User-controlled AI: backend/model/key bisa dikendalikan, bukan vendor lock-in.
+10. Track the metrics that matter: AI action success rate, replacement rate, cancellation rate, p95 latency, crash-free sessions, average characters processed, and repeat actions per user.
 
 ## Development Commands
 
@@ -357,11 +379,11 @@ docker compose up --build
 
 ## Troubleshooting
 
-### Keyboard tidak muncul
+### Keyboard does not appear
 
-- Pastikan app punya launcher activity.
-- Aktifkan keyboard dari Android settings.
-- Jalankan:
+- Make sure the app has a launcher activity.
+- Enable the keyboard from Android settings.
+- Run:
 
 ```bash
 adb shell ime list -a
@@ -369,20 +391,20 @@ adb shell ime enable com.morfoboard.app/.ime.MorfoboardIME
 adb shell ime set com.morfoboard.app/.ime.MorfoboardIME
 ```
 
-### AI action gagal
+### AI action fails
 
-- Pastikan device online.
-- Pastikan sudah login Google.
-- Pastikan backend reachable dari device.
-- Pastikan `GOOGLE_CLIENT_ID` backend sama dengan Web Client ID Android sign-in.
-- Cek backend logs dan response dari AI router.
+- Make sure the device is online.
+- Make sure the user is signed in with Google.
+- Make sure the backend is reachable from the device.
+- Make sure backend `GOOGLE_CLIENT_ID` matches the Android Google Sign-In Web Client ID.
+- Check backend logs and the AI router response.
 
-### Backend tidak bisa memanggil model
+### Backend cannot call the model
 
-- Cek `NINE_ROUTER_URL`.
-- Cek `NINE_ROUTER_API_KEY`.
-- Cek timeout dan payload size.
-- Coba request manual ke endpoint OpenAI-compatible.
+- Check `NINE_ROUTER_URL`.
+- Check `NINE_ROUTER_API_KEY`.
+- Check timeout and payload size.
+- Try a manual request to the OpenAI-compatible endpoint.
 
 ## License
 
