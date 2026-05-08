@@ -14,6 +14,7 @@ import (
 	"morfoboard-backend/internal/config"
 	"morfoboard-backend/internal/health"
 	"morfoboard-backend/internal/proxy"
+	"morfoboard-backend/internal/users"
 )
 
 func main() {
@@ -30,15 +31,31 @@ func main() {
 		slog.Warn("config validation warning", "error", err)
 	}
 
+	// Initialize user store
+	userStore := users.NewStore("data/users.json")
+	slog.Info("user store initialized", "path", "data/users.json")
+
+	// Admin key for user management endpoints
+	adminKey := os.Getenv("ADMIN_KEY")
+	if adminKey == "" {
+		adminKey = "morfoboard-admin-2024"
+		slog.Warn("ADMIN_KEY not set, using default (change this in production!)")
+	}
+
 	// Create handlers
 	healthHandler := health.Handler(cfg)
-	processHandler := proxy.NewHandler(cfg)
+	processHandler := proxy.NewHandler(cfg, userStore)
+	adminHandler := users.NewAdminHandler(userStore, adminKey)
 
 	mux := http.NewServeMux()
 
 	// Routes
 	mux.HandleFunc("GET /api/v1/health", healthHandler)
 	mux.HandleFunc("POST /api/v1/ai/process", processHandler.Process)
+	
+	// Admin routes
+	mux.HandleFunc("GET /api/v1/admin/users", adminHandler.ListUsers)
+	mux.HandleFunc("POST /api/v1/admin/blacklist", adminHandler.Blacklist)
 
 	// Middleware: logging + CORS
 	handler := loggingMiddleware(corsMiddleware(mux))

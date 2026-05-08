@@ -9,6 +9,7 @@ import (
 
 	"morfoboard-backend/internal/auth"
 	"morfoboard-backend/internal/config"
+	"morfoboard-backend/internal/users"
 )
 
 type ProcessRequest struct {
@@ -34,13 +35,15 @@ type Handler struct {
 	cfg      *config.Config
 	verifier *auth.Verifier
 	client   *NineRouterClient
+	users    *users.Store
 }
 
-func NewHandler(cfg *config.Config) *Handler {
+func NewHandler(cfg *config.Config, userStore *users.Store) *Handler {
 	return &Handler{
 		cfg:      cfg,
 		verifier: auth.NewVerifier(cfg.GoogleClientID),
 		client:   NewNineRouterClient(cfg),
+		users:    userStore,
 	}
 }
 
@@ -62,6 +65,13 @@ func (h *Handler) Process(w http.ResponseWriter, r *http.Request) {
 
 	// Log user info
 	slog.Info("authenticated request", "user", userInfo.Email)
+
+	// Record usage and check blacklist
+	if !h.users.RecordRequest(userInfo.Email, userInfo.Name) {
+		slog.Warn("blacklisted user attempted request", "user", userInfo.Email)
+		writeError(w, http.StatusForbidden, "blacklisted", "Your account has been suspended")
+		return
+	}
 
 	// Parse request
 	var req ProcessRequest
