@@ -1,13 +1,21 @@
 package com.morfoboard.app.ime
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.core.content.ContextCompat
+import com.morfoboard.app.MainActivity
 import com.morfoboard.app.R
 import com.morfoboard.app.ai.AIAction
 import com.morfoboard.app.ai.AIClient
@@ -20,7 +28,6 @@ import kotlinx.coroutines.*
 
 /**
  * Morfoboard Input Method Editor.
- * Phase 1: Direct AI connection, no auth required.
  */
 class MorfoboardIME : InputMethodService() {
 
@@ -38,6 +45,10 @@ class MorfoboardIME : InputMethodService() {
     private lateinit var authManager: AuthManager
     private lateinit var aiClient: AIClient
     private lateinit var connectivityMonitor: ConnectivityMonitor
+
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var isListening = false
+    private var speechIntent: Intent? = null
 
     private var shiftState = ShiftState.OFF
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -57,6 +68,51 @@ class MorfoboardIME : InputMethodService() {
         )
         connectivityMonitor = ConnectivityMonitor(this)
         connectivityMonitor.start()
+        
+        setupSpeechRecognizer()
+    }
+
+    private fun setupSpeechRecognizer() {
+        if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+            speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID") // Default to ID, can be made dynamic
+            }
+            
+            speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {}
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() {
+                    setListeningState(false)
+                }
+                override fun onError(error: Int) {
+                    Log.e(TAG, "Speech recognition error: $error")
+                    setListeningState(false)
+                    val msg = when(error) {
+                        SpeechRecognizer.ERROR_NETWORK -> "Network error"
+                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+                        SpeechRecognizer.ERROR_NO_MATCH -> "No speech recognized"
+                        else -> "Voice recognition failed"
+                    }
+                    if (error != SpeechRecognizer.ERROR_NO_MATCH) {
+                        Toast.makeText(this@MorfoboardIME, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }
+                override fun onResults(results: Bundle?) {
+                    setListeningState(false)
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    if (!matches.isNullOrEmpty()) {
+                        val text = matches[0] + " "
+                        currentInputConnection?.commitText(text, 1)
+                    }
+                }
+                override fun onPartialResults(partialResults: Bundle?) {}
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+        }
     }
 
     override fun onCreateInputView(): View {
@@ -82,6 +138,7 @@ class MorfoboardIME : InputMethodService() {
             onLogin = { handleSettings() },
             onTranslate = { handleTranslate() },
             onFixText = { handleFixText() },
+            onVoiceInput = { handleVoiceInput() },
             onSettings = { handleSettings() }
         )
         mainLayout.addView(actionBarCtrl.view)
@@ -215,11 +272,47 @@ class MorfoboardIME : InputMethodService() {
             }
 
             KeyType.ACTION_AI -> {
-                Toast.makeText(this, "Voice input coming soon", Toast.LENGTH_SHORT).show()
+                handleVoiceInput()
             }
         }
 
         updateActionBarState()
+    }
+
+    // ─────────────────────────────────────────────
+    // Voice Input
+    // ─────────────────────────────────────────────
+
+    private fun handleVoiceInput() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Microphone permission required", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            return
+        }
+
+        if (speechRecognizer == null) {
+            setupSpeechRecognizer()
+        }
+
+        if (isListening) {
+            speechRecognizer?.stopListening()
+            setListeningState(false)
+        } else {
+            speechIntent?.let {
+                speechRecognizer?.startListening(it)
+                setListeningState(true)
+            }
+        }
+    }
+
+    private fun setListeningState(listening: Boolean) {
+        isListening = listening
+        if (::actionBarCtrl.isInitialized) {
+            actionBarCtrl.setListening(listening)
+        }
     }
 
     // ─────────────────────────────────────────────

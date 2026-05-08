@@ -21,6 +21,7 @@ class ActionBarController(
     private val onLogin: () -> Unit,
     private val onTranslate: () -> Unit,
     private val onFixText: () -> Unit,
+    private val onVoiceInput: () -> Unit,
     private val onSettings: () -> Unit
 ) {
 
@@ -35,11 +36,13 @@ class ActionBarController(
     private lateinit var translateBtn: LinearLayout
     private lateinit var fixTextBtn: LinearLayout
     private lateinit var loginBtn: LinearLayout
+    private lateinit var voiceBtn: ImageButton
     private lateinit var settingsBtn: ImageButton
     private lateinit var loadingIndicator: ProgressBar
 
     private var hasText = false
     private var isLoading = false
+    private var isListening = false
 
     init {
         rebuild()
@@ -72,6 +75,20 @@ class ActionBarController(
             indeterminateTintList = android.content.res.ColorStateList.valueOf(context.getColor(R.color.loading))
         }
         view.addView(loadingIndicator)
+
+        // Voice button
+        voiceBtn = ImageButton(context).apply {
+            setImageResource(R.drawable.ic_morfoboard_mic)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            setColorFilter(context.getColor(R.color.text_secondary))
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(4) }
+            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            elevation = 0f
+            stateListAnimator = null
+            setOnClickListener { onVoiceInput() }
+            contentDescription = "Voice Input"
+        }
+        view.addView(voiceBtn)
 
         // Settings button - Significantly larger for better visibility
         settingsBtn = ImageButton(context).apply {
@@ -137,6 +154,15 @@ class ActionBarController(
     fun setLoading(loading: Boolean) {
         isLoading = loading
         updateVisibility()
+    }
+
+    fun setListening(listening: Boolean) {
+        isListening = listening
+        if (::voiceBtn.isInitialized) {
+            voiceBtn.setColorFilter(
+                context.getColor(if (listening) R.color.accent_red else R.color.text_secondary)
+            )
+        }
     }
 
     private fun updateVisibility() {

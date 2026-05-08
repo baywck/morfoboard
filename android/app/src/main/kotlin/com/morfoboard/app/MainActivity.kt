@@ -10,6 +10,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
 import com.morfoboard.app.auth.AuthManager
 import com.morfoboard.app.auth.GoogleSignInManager
 import com.morfoboard.app.settings.SettingsActivity
@@ -27,6 +31,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         authManager = AuthManager(this)
         googleSignInManager = GoogleSignInManager(this)
+        
+        // Request microphone permission if not granted
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 101)
+        }
+        
         setContentView(buildLayout())
     }
 
