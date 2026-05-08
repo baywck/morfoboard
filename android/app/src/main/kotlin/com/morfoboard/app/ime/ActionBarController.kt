@@ -39,6 +39,7 @@ class ActionBarController(
     private lateinit var voiceBtn: ImageButton
     private lateinit var settingsBtn: ImageButton
     private lateinit var loadingIndicator: ProgressBar
+    private lateinit var listeningIndicator: TextView
 
     private var hasText = false
     private var isLoading = false
@@ -63,8 +64,20 @@ class ActionBarController(
             view.addView(loginBtn)
         }
 
+        // Listening Indicator
+        listeningIndicator = TextView(context).apply {
+            text = "🎙️ Listening..."
+            setTextColor(context.getColor(R.color.accent_red))
+            textSize = 13f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+            setPadding(dp(8), 0, 0, 0)
+        }
+        view.addView(listeningIndicator)
+
         val spacer = View(context).apply {
-            layoutParams = LinearLayout.LayoutParams(0, 1, if (isLoggedIn()) 1f else 0f)
+            layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
         }
         view.addView(spacer)
 
@@ -163,19 +176,33 @@ class ActionBarController(
                 context.getColor(if (listening) R.color.accent_red else R.color.text_secondary)
             )
         }
+        updateVisibility()
     }
 
     private fun updateVisibility() {
         view.visibility = View.VISIBLE
+        
+        if (::listeningIndicator.isInitialized) {
+            listeningIndicator.visibility = if (isListening) View.VISIBLE else View.GONE
+        }
+
         if (isLoggedIn() && ::translateBtn.isInitialized && ::fixTextBtn.isInitialized) {
             val enabled = hasText && !isLoading
             translateBtn.isEnabled = enabled
             fixTextBtn.isEnabled = enabled
             translateBtn.alpha = if (enabled) 1f else 0.45f
             fixTextBtn.alpha = if (enabled) 1f else 0.45f
+            
+            // Hide normal buttons when listening to emphasize the listening state
+            val btnVisibility = if (isListening) View.GONE else View.VISIBLE
+            translateBtn.visibility = btnVisibility
+            fixTextBtn.visibility = btnVisibility
+        } else if (::loginBtn.isInitialized) {
+            loginBtn.visibility = if (isListening) View.GONE else View.VISIBLE
         }
+        
         if (::loadingIndicator.isInitialized) {
-            loadingIndicator.visibility = if (isLoading) View.VISIBLE else View.GONE
+            loadingIndicator.visibility = if (isLoading && !isListening) View.VISIBLE else View.GONE
         }
     }
 

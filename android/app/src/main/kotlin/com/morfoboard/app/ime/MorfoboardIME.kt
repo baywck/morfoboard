@@ -1,6 +1,7 @@
 package com.morfoboard.app.ime
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
@@ -81,12 +82,19 @@ class MorfoboardIME : InputMethodService() {
             }
             
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {}
+                override fun onReadyForSpeech(params: Bundle?) {
+                    // Play a soft beep when ready to record
+                    val am = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+                    am?.playSoundEffect(android.media.AudioManager.FX_KEYPRESS_STANDARD, 1.0f)
+                }
                 override fun onBeginningOfSpeech() {}
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {
                     setListeningState(false)
+                    // Play a soft beep when recording stops
+                    val am = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+                    am?.playSoundEffect(android.media.AudioManager.FX_KEYPRESS_RETURN, 1.0f)
                 }
                 override fun onError(error: Int) {
                     Log.e(TAG, "Speech recognition error: $error")
