@@ -104,16 +104,19 @@ class KeyboardView(
             
             // Text color logic
             val isEmbossed = key.keyType == KeyType.SPACE || bgRes == R.drawable.key_bg_normal || bgRes == R.drawable.key_bg_blue
-            
+
             val textColor = when {
                 isEmbossed -> context.getColor(R.color.text_secondary)
                 bgRes == R.drawable.key_bg_green -> Color.parseColor("#A8E6CF") // Bright green tint
-                else -> context.getColor(R.color.key_text_bright) // Bright for functional keys
+                bgRes == R.drawable.key_bg_special -> context.getColor(R.color.text_secondary) // Muted gray instead of white
+                else -> context.getColor(R.color.key_text_bright) // Fallback
             }
             setTextColor(textColor)
 
             if (isEmbossed) {
                 alpha = 0.6f 
+            } else if (bgRes == R.drawable.key_bg_special) {
+                alpha = 0.85f // Muted but slightly more visible than normal keys
             }
 
             textSize = when (key.keyType) {
