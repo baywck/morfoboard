@@ -36,13 +36,19 @@ class KeyboardView(
 
     init {
         orientation = VERTICAL
-        setBackgroundResource(R.drawable.keyboard_background_rounded)
+        applyThemeBackground()
         setPadding(dp(6), dp(2), dp(6), dp(8))
         clipToPadding = false
         renderLayout()
     }
 
+    private fun applyThemeBackground() {
+        val themeColors = settingsStore.currentThemeColors
+        setBackgroundColor(themeColors.keyboardBg)
+    }
+
     fun renderLayout() {
+        applyThemeBackground()
         removeAllViews()
         keyRows.clear()
 
@@ -78,7 +84,7 @@ class KeyboardView(
         val accentLetters = setOf("n", "o", "a", "f", "r")
         val secondaryLetters = setOf("w", "j", "z", "x", "b")
         
-        val palette = settingsStore.currentPalette
+        val themeColors = settingsStore.currentThemeColors
         val cornerRadius = settingsStore.keyCornerRadiusDp
 
         // Determine key type for styling
@@ -102,22 +108,26 @@ class KeyboardView(
             
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             
-            // Dynamic background based on settings
+            // Dynamic background based on settings and theme
             val keyBg = when {
                 key.isSpecial -> createKeyBackground(
-                    context.getColor(R.color.key_bg_special),
-                    context.getColor(R.color.key_bg_pressed),
+                    themeColors.keyBgSpecial,
+                    themeColors.keyBgPressed,
                     cornerRadius
                 )
-                isAccent -> createKeyBackground(palette.keyBg, palette.keyBgPressed, cornerRadius)
+                isAccent -> createKeyBackground(
+                    settingsStore.accentKeyBg,
+                    settingsStore.accentKeyBgPressed,
+                    cornerRadius
+                )
                 isSecondary -> createKeyBackground(
-                    context.getColor(R.color.accent_blue),
-                    context.getColor(R.color.accent_blue_pressed),
+                    themeColors.keyBgSpecial,
+                    themeColors.keyBgPressed,
                     cornerRadius
                 )
                 else -> createKeyBackground(
-                    context.getColor(R.color.key_bg),
-                    context.getColor(R.color.key_bg_pressed),
+                    themeColors.keyBg,
+                    themeColors.keyBgPressed,
                     cornerRadius
                 )
             }
@@ -126,15 +136,15 @@ class KeyboardView(
             // Text color
             val isEmbossed = key.keyType == KeyType.SPACE || (!isAccent && !key.isSpecial)
             val textColor = when {
-                isAccent -> palette.textColor
-                isEmbossed -> context.getColor(R.color.text_secondary)
-                key.isSpecial -> context.getColor(R.color.text_secondary)
-                else -> context.getColor(R.color.key_text_bright)
+                isAccent -> settingsStore.accentTextColor
+                isEmbossed -> themeColors.textSecondary
+                key.isSpecial -> themeColors.textSecondary
+                else -> themeColors.textPrimary
             }
             setTextColor(textColor)
 
             if (isEmbossed && !isSecondary) {
-                alpha = 0.6f 
+                alpha = 0.7f 
             } else if (key.isSpecial) {
                 alpha = 0.85f
             }

@@ -129,8 +129,9 @@ class MorfoboardIME : InputMethodService() {
     override fun onCreateInputView(): View {
         Log.d(TAG, "onCreateInputView")
         
-        // Sync navigation bar color with keyboard background
-        window?.window?.navigationBarColor = getColor(R.color.keyboard_bg)
+        // Sync navigation bar color with keyboard theme
+        val themeColors = settingsStore.currentThemeColors
+        window?.window?.navigationBarColor = themeColors.keyboardBg
 
         rootLayout = FrameLayout(this)
 
@@ -210,7 +211,7 @@ class MorfoboardIME : InputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         // Re-apply keyboard height and re-render keys every time keyboard appears
-        // This ensures settings changes (size, color, shape) take effect immediately
+        // This ensures settings changes (size, color, shape, theme) take effect immediately
         if (::keyboardView.isInitialized) {
             val newHeight = calculateKeyboardHeight()
             val params = keyboardView.layoutParams
@@ -218,8 +219,12 @@ class MorfoboardIME : InputMethodService() {
                 params.height = newHeight
                 keyboardView.layoutParams = params
             }
-            // Re-render to pick up color/shape changes
+            // Re-render to pick up color/shape/theme changes
             keyboardView.renderLayout()
+            
+            // Update navigation bar color for theme
+            val themeColors = settingsStore.currentThemeColors
+            window?.window?.navigationBarColor = themeColors.keyboardBg
         }
     }
 

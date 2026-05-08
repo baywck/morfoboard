@@ -86,6 +86,7 @@ class SettingsActivity : AppCompatActivity() {
             })
 
             addView(buildSection("ACCOUNT") { addView(buildAccountSection()) })
+            addView(buildSection("THEME") { addView(buildThemeSection()) })
             addView(buildSection("KEYBOARD SIZE") { addView(buildKeyboardSizeSection()) })
             addView(buildSection("ACCENT COLOR") { addView(buildColorSection()) })
             addView(buildSection("KEY SHAPE") { addView(buildKeyShapeSection()) })
@@ -206,6 +207,16 @@ class SettingsActivity : AppCompatActivity() {
         )
         return buildChipGroup(sizes, settingsStore.keyboardSize) { selected ->
             settingsStore.keyboardSize = selected
+        }
+    }
+
+    private fun buildThemeSection(): LinearLayout {
+        val themes = listOf(
+            "dark" to "Dark",
+            "light" to "Light"
+        )
+        return buildChipGroup(themes, settingsStore.theme) { selected ->
+            settingsStore.theme = selected
         }
     }
 

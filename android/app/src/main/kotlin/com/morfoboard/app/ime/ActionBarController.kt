@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import com.morfoboard.app.R
+import com.morfoboard.app.settings.MorfoboardSettingsStore
 
 /**
  * Integrated AI toolbar above Morfoboard keyboard.
@@ -26,6 +27,8 @@ class ActionBarController(
     private val onVoiceInput: () -> Unit,
     private val onSettings: () -> Unit
 ) {
+
+    private val settingsStore = MorfoboardSettingsStore(context)
 
     val view: LinearLayout = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
@@ -114,7 +117,7 @@ class ActionBarController(
         voiceBtn = ImageButton(context).apply {
             setImageResource(R.drawable.ic_morfoboard_mic)
             setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            setColorFilter(context.getColor(R.color.text_secondary))
+            setColorFilter(settingsStore.currentThemeColors.textSecondary)
             layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(4) }
             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
             elevation = 0f
@@ -128,7 +131,7 @@ class ActionBarController(
         settingsBtn = ImageButton(context).apply {
             setImageResource(R.drawable.ic_morfoboard_sliders)
             setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            setColorFilter(context.getColor(R.color.text_secondary))
+            setColorFilter(settingsStore.currentThemeColors.textSecondary)
             layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
             elevation = 0f
@@ -146,9 +149,21 @@ class ActionBarController(
         primary: Boolean,
         onClick: () -> Unit
     ): LinearLayout {
+        val themeColors = settingsStore.currentThemeColors
+        
         return LinearLayout(view.context).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundResource(if (primary) R.drawable.login_btn_bg else R.drawable.action_btn_bg)
+            
+            // Theme-aware button background
+            val bgDrawable = android.graphics.drawable.GradientDrawable().apply {
+                if (primary) {
+                    setColor(themeColors.textPrimary)
+                } else {
+                    setColor(if (settingsStore.isDarkTheme) 0xFF181B1E.toInt() else 0xFFE0E4E8.toInt())
+                }
+                cornerRadius = dp(6).toFloat()
+            }
+            background = bgDrawable
             setPadding(dp(10), 0, dp(10), 0)
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
@@ -158,14 +173,14 @@ class ActionBarController(
 
             val iconView = TextView(view.context).apply {
                 text = icon
-                setTextColor(view.context.getColor(if (primary) R.color.login_btn_text else R.color.accent_blue))
+                setTextColor(if (primary) themeColors.keyboardBg else themeColors.textSecondary)
                 textSize = if (primary) 13f else 12f
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 gravity = Gravity.CENTER
             }
             val labelView = TextView(view.context).apply {
                 text = label
-                setTextColor(view.context.getColor(if (primary) R.color.login_btn_text else R.color.key_text_bright))
+                setTextColor(if (primary) themeColors.keyboardBg else themeColors.textPrimary)
                 textSize = 11f
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 setPadding(dp(5), 0, 0, 0)
@@ -194,7 +209,7 @@ class ActionBarController(
         isListening = listening
         if (::voiceBtn.isInitialized) {
             val color = if (listening) android.graphics.Color.parseColor("#FF6B6B") 
-                        else context.getColor(R.color.text_secondary)
+                        else settingsStore.currentThemeColors.textSecondary
             voiceBtn.setColorFilter(color)
         }
         
