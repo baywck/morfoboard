@@ -39,9 +39,6 @@ class MorfoboardIME : InputMethodService() {
         private const val TAG = "MorfoboardIME"
         // Production server IP
         private const val DEFAULT_BASE_URL = "http://43.156.68.104:8080"
-        
-        // Keyboard height: percentage of screen height for the keyboard area
-        private const val KEYBOARD_HEIGHT_RATIO = 0.32f
     }
 
     private lateinit var rootLayout: FrameLayout
@@ -190,17 +187,16 @@ class MorfoboardIME : InputMethodService() {
     }
 
     /**
-     * Calculate keyboard height as a ratio of screen height.
-     * This ensures the keyboard is always proportionally sized regardless of resolution.
+     * Calculate keyboard height based on user's size preset.
      */
     private fun calculateKeyboardHeight(): Int {
         val screenHeight = resources.displayMetrics.heightPixels
-        val targetHeight = (screenHeight * KEYBOARD_HEIGHT_RATIO).toInt()
+        val ratio = settingsStore.keyboardHeightRatio
+        val targetHeight = (screenHeight * ratio).toInt()
         
-        // Minimum 200dp, maximum 280dp in pixels
         val density = resources.displayMetrics.density
-        val minPx = (200 * density).toInt()
-        val maxPx = (280 * density).toInt()
+        val minPx = (180 * density).toInt()
+        val maxPx = (300 * density).toInt()
         
         return targetHeight.coerceIn(minPx, maxPx)
     }
@@ -209,6 +205,22 @@ class MorfoboardIME : InputMethodService() {
         super.onDestroy()
         connectivityMonitor.stop()
         scope.cancel()
+    }
+
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        // Re-apply keyboard height and re-render keys every time keyboard appears
+        // This ensures settings changes (size, color, shape) take effect immediately
+        if (::keyboardView.isInitialized) {
+            val newHeight = calculateKeyboardHeight()
+            val params = keyboardView.layoutParams
+            if (params.height != newHeight) {
+                params.height = newHeight
+                keyboardView.layoutParams = params
+            }
+            // Re-render to pick up color/shape changes
+            keyboardView.renderLayout()
+        }
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {

@@ -1,9 +1,11 @@
 package com.morfoboard.app.ime
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
+import android.view.animation.LinearInterpolator
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -28,7 +30,7 @@ class ActionBarController(
     val view: LinearLayout = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        setPadding(dp(12), dp(8), dp(12), dp(8)) // Balanced padding
+        setPadding(dp(12), dp(8), dp(12), dp(8))
         gravity = Gravity.CENTER_VERTICAL
         visibility = View.VISIBLE
     }
@@ -39,7 +41,8 @@ class ActionBarController(
     private lateinit var voiceBtn: ImageButton
     private lateinit var settingsBtn: ImageButton
     private lateinit var loadingIndicator: ProgressBar
-    private lateinit var listeningIndicator: TextView
+    private lateinit var listeningIndicator: LinearLayout
+    private var pulseAnimator: ValueAnimator? = null
 
     private var hasText = false
     private var isLoading = false
@@ -64,15 +67,33 @@ class ActionBarController(
             view.addView(loginBtn)
         }
 
-        // Listening Indicator
-        listeningIndicator = TextView(context).apply {
-            text = "🎙️ Listening..."
-            setTextColor(context.getColor(R.color.accent_red))
-            textSize = 13f
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        // Listening Indicator — clean design with pulsing dot
+        listeningIndicator = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             visibility = View.GONE
             setPadding(dp(8), 0, 0, 0)
+            
+            // Pulsing dot
+            val dot = View(context).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(8), dp(8)).apply {
+                    marginEnd = dp(8)
+                }
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(android.graphics.Color.parseColor("#FF6B6B"))
+                }
+            }
+            addView(dot)
+            
+            // Text label
+            val label = TextView(context).apply {
+                text = "Listening"
+                setTextColor(android.graphics.Color.parseColor("#FF6B6B"))
+                textSize = 13f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            }
+            addView(label)
         }
         view.addView(listeningIndicator)
 
@@ -103,12 +124,12 @@ class ActionBarController(
         }
         view.addView(voiceBtn)
 
-        // Settings button - Significantly larger for better visibility
+        // Settings button
         settingsBtn = ImageButton(context).apply {
             setImageResource(R.drawable.ic_morfoboard_sliders)
             setBackgroundColor(android.graphics.Color.TRANSPARENT)
             setColorFilter(context.getColor(R.color.text_secondary))
-            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)) // Increased from 25 to 36
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
             elevation = 0f
             stateListAnimator = null
@@ -172,11 +193,46 @@ class ActionBarController(
     fun setListening(listening: Boolean) {
         isListening = listening
         if (::voiceBtn.isInitialized) {
-            voiceBtn.setColorFilter(
-                context.getColor(if (listening) R.color.accent_red else R.color.text_secondary)
-            )
+            val color = if (listening) android.graphics.Color.parseColor("#FF6B6B") 
+                        else context.getColor(R.color.text_secondary)
+            voiceBtn.setColorFilter(color)
         }
+        
+        // Pulse animation for the recording dot
+        if (listening) {
+            startPulseAnimation()
+        } else {
+            stopPulseAnimation()
+        }
+        
         updateVisibility()
+    }
+    
+    private fun startPulseAnimation() {
+        val dot = if (::listeningIndicator.isInitialized && listeningIndicator.childCount > 0) {
+            listeningIndicator.getChildAt(0)
+        } else null
+        
+        dot?.let {
+            pulseAnimator = ValueAnimator.ofFloat(1f, 0.3f, 1f).apply {
+                duration = 1200
+                repeatCount = ValueAnimator.INFINITE
+                interpolator = LinearInterpolator()
+                addUpdateListener { animator ->
+                    it.alpha = animator.animatedValue as Float
+                }
+                start()
+            }
+        }
+    }
+    
+    private fun stopPulseAnimation() {
+        pulseAnimator?.cancel()
+        pulseAnimator = null
+        
+        if (::listeningIndicator.isInitialized && listeningIndicator.childCount > 0) {
+            listeningIndicator.getChildAt(0).alpha = 1f
+        }
     }
 
     private fun updateVisibility() {
@@ -193,7 +249,6 @@ class ActionBarController(
             translateBtn.alpha = if (enabled) 1f else 0.45f
             fixTextBtn.alpha = if (enabled) 1f else 0.45f
             
-            // Hide normal buttons when listening to emphasize the listening state
             val btnVisibility = if (isListening) View.GONE else View.VISIBLE
             translateBtn.visibility = btnVisibility
             fixTextBtn.visibility = btnVisibility

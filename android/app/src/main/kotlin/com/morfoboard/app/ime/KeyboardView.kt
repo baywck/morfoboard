@@ -3,6 +3,7 @@ package com.morfoboard.app.ime
 import android.content.Context
 import android.graphics.Typeface
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
@@ -16,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
 import com.morfoboard.app.R
+import com.morfoboard.app.settings.MorfoboardSettingsStore
 
 /**
  * Custom keyboard view that renders QWERTY/symbol layouts.
@@ -30,10 +32,10 @@ class KeyboardView(
     private var isSymbolPage2 = false
     private val keyRows = mutableListOf<LinearLayout>()
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    private val settingsStore = MorfoboardSettingsStore(context)
 
     init {
         orientation = VERTICAL
-        // Integrated matte surface: no floating card, no outer border.
         setBackgroundResource(R.drawable.keyboard_background_rounded)
         setPadding(dp(6), dp(2), dp(6), dp(8))
         clipToPadding = false
@@ -73,50 +75,68 @@ class KeyboardView(
     }
 
     private fun createKeyView(key: KeyDef): View {
-        val emeraldLetters = setOf("n", "o", "a", "f", "r") // Added f and r
-        val blueLetters = setOf("w", "j", "z", "x", "b") // Removed f
+        val accentLetters = setOf("n", "o", "a", "f", "r")
+        val secondaryLetters = setOf("w", "j", "z", "x", "b")
+        
+        val palette = settingsStore.currentPalette
+        val cornerRadius = settingsStore.keyCornerRadiusDp
 
-        val bgRes = when {
-            key.isSpecial -> R.drawable.key_bg_special
-            key.keyType == KeyType.CHARACTER && emeraldLetters.contains(key.label.lowercase()) -> R.drawable.key_bg_green
-            key.keyType == KeyType.CHARACTER && blueLetters.contains(key.label.lowercase()) -> R.drawable.key_bg_blue
-            else -> R.drawable.key_bg_normal
-        }
+        // Determine key type for styling
+        val isAccent = key.keyType == KeyType.CHARACTER && accentLetters.contains(key.label.lowercase())
+        val isSecondary = key.keyType == KeyType.CHARACTER && secondaryLetters.contains(key.label.lowercase())
 
         return Button(context).apply {
             tag = key
             val label = displayLabel(key)
-            // Apply case based on shift state for characters
             text = if (key.keyType == KeyType.CHARACTER && key.code != 0) {
                 if (shiftState == ShiftState.OFF) label.lowercase() else label.uppercase()
             } else {
                 label
             }
 
-            // Hero key 'M' branding: Thin and transparent
+            // Hero key 'M' branding
             if (key.label.equals("m", ignoreCase = true)) {
                 text = "M"
-                alpha = 0.6f // Slightly more visible
+                alpha = 0.6f
             }
             
-            // Set consistent premium typography
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             
-            // Text color logic
-            val isEmbossed = key.keyType == KeyType.SPACE || bgRes == R.drawable.key_bg_normal || bgRes == R.drawable.key_bg_blue
+            // Dynamic background based on settings
+            val keyBg = when {
+                key.isSpecial -> createKeyBackground(
+                    context.getColor(R.color.key_bg_special),
+                    context.getColor(R.color.key_bg_pressed),
+                    cornerRadius
+                )
+                isAccent -> createKeyBackground(palette.keyBg, palette.keyBgPressed, cornerRadius)
+                isSecondary -> createKeyBackground(
+                    context.getColor(R.color.accent_blue),
+                    context.getColor(R.color.accent_blue_pressed),
+                    cornerRadius
+                )
+                else -> createKeyBackground(
+                    context.getColor(R.color.key_bg),
+                    context.getColor(R.color.key_bg_pressed),
+                    cornerRadius
+                )
+            }
+            background = keyBg
 
+            // Text color
+            val isEmbossed = key.keyType == KeyType.SPACE || (!isAccent && !key.isSpecial)
             val textColor = when {
+                isAccent -> palette.textColor
                 isEmbossed -> context.getColor(R.color.text_secondary)
-                bgRes == R.drawable.key_bg_green -> Color.parseColor("#A8E6CF") // Bright green tint
-                bgRes == R.drawable.key_bg_special -> context.getColor(R.color.text_secondary) // Muted gray instead of white
-                else -> context.getColor(R.color.key_text_bright) // Fallback
+                key.isSpecial -> context.getColor(R.color.text_secondary)
+                else -> context.getColor(R.color.key_text_bright)
             }
             setTextColor(textColor)
 
-            if (isEmbossed) {
+            if (isEmbossed && !isSecondary) {
                 alpha = 0.6f 
-            } else if (bgRes == R.drawable.key_bg_special) {
-                alpha = 0.85f // Muted but slightly more visible than normal keys
+            } else if (key.isSpecial) {
+                alpha = 0.85f
             }
 
             textSize = when (key.keyType) {
@@ -129,23 +149,41 @@ class KeyboardView(
             gravity = Gravity.CENTER
             isAllCaps = false
 
-            setBackgroundResource(bgRes)
-
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, key.widthWeight).apply {
                 setMargins(dp(1), dp(1), dp(1), dp(1))
             }
 
-            // High-end startup product design: minimal, no default shadows, controlled elevation
             setPadding(0, 0, 0, 0)
             minimumWidth = 0
             minimumHeight = 0
-            
-            // Performance: elevation 0 to reduce rendering overhead during fast typing
             elevation = 0f
             stateListAnimator = null
 
-            // Touch handling with haptic feedback
             setOnTouchListener(KeyTouchListener(key, audioManager, onKeyAction))
+        }
+    }
+
+    /**
+     * Create a programmatic key background drawable with dynamic color and corner radius.
+     */
+    private fun createKeyBackground(color: Int, pressedColor: Int, cornerRadiusDp: Float): android.graphics.drawable.StateListDrawable {
+        val radiusPx = dp(cornerRadiusDp.toInt()).toFloat()
+        
+        val normalDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(color)
+            cornerRadius = radiusPx
+        }
+        
+        val pressedDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(pressedColor)
+            cornerRadius = radiusPx
+        }
+        
+        return android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
+            addState(intArrayOf(), normalDrawable)
         }
     }
 

@@ -5,10 +5,10 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.RadioButton
-import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -67,6 +67,7 @@ class SettingsActivity : AppCompatActivity() {
             setBackgroundColor(getColor(R.color.background))
             setPadding(dp(24), dp(48), dp(24), dp(48))
 
+            // Header
             addView(TextView(this@SettingsActivity).apply {
                 text = "MORFOBOARD"
                 setTextColor(getColor(R.color.text_primary))
@@ -77,19 +78,22 @@ class SettingsActivity : AppCompatActivity() {
             })
             
             addView(TextView(this@SettingsActivity).apply {
-                text = "Neural Keyboard Settings"
-                setTextColor(getColor(R.color.accent_blue))
+                text = "Settings"
+                setTextColor(getColor(R.color.text_secondary))
                 textSize = 14f
-                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                typeface = Typeface.create("sans-serif", Typeface.NORMAL)
                 setPadding(0, 0, 0, dp(32))
             })
 
             addView(buildSection("ACCOUNT") { addView(buildAccountSection()) })
+            addView(buildSection("KEYBOARD SIZE") { addView(buildKeyboardSizeSection()) })
+            addView(buildSection("ACCENT COLOR") { addView(buildColorSection()) })
+            addView(buildSection("KEY SHAPE") { addView(buildKeyShapeSection()) })
             addView(buildSection("AI TARGET LANGUAGE") { addView(buildLanguageSection()) })
             addView(buildSection("AI WRITING TONE") { addView(buildToneSection()) })
-            addView(buildSection("SYSTEM") {
+            addView(buildSection("ABOUT") {
                 addView(TextView(this@SettingsActivity).apply {
-                    text = "Version 0.1.0-beta\nNeural Engine Active"
+                    text = "Version 0.1.0-beta"
                     setTextColor(getColor(R.color.text_secondary))
                     textSize = 14f
                     setLineSpacing(0f, 1.4f)
@@ -109,13 +113,13 @@ class SettingsActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(0, 0, 0, dp(24)) }
+            ).apply { setMargins(0, 0, 0, dp(20)) }
 
             addView(TextView(this@SettingsActivity).apply {
                 text = title
                 setTextColor(getColor(R.color.text_secondary))
-                textSize = 12f
-                letterSpacing = 0.08f
+                textSize = 11f
+                letterSpacing = 0.1f
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 setPadding(dp(4), 0, 0, dp(8))
             })
@@ -124,11 +128,10 @@ class SettingsActivity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
                 val bgDrawable = GradientDrawable().apply {
                     setColor(getColor(R.color.surface))
-                    cornerRadius = dp(16).toFloat()
-                    setStroke(dp(1), Color.parseColor("#2A2D31")) 
+                    cornerRadius = dp(14).toFloat()
                 }
                 background = bgDrawable
-                setPadding(dp(20), dp(20), dp(20), dp(20))
+                setPadding(dp(16), dp(16), dp(16), dp(16))
                 content()
             }
             addView(card)
@@ -153,15 +156,16 @@ class SettingsActivity : AppCompatActivity() {
                     setPadding(0, dp(2), 0, dp(16))
                 })
                 addView(Button(this@SettingsActivity).apply {
-                    text = "DISCONNECT"
+                    text = "Disconnect"
                     setTextColor(getColor(R.color.error))
-                    textSize = 12f
+                    textSize = 13f
                     typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                    isAllCaps = false
                     background = GradientDrawable().apply {
-                        setColor(Color.parseColor("#1AFFFFFF"))
-                        cornerRadius = dp(8).toFloat()
+                        setColor(Color.parseColor("#1AFF6B84"))
+                        cornerRadius = dp(10).toFloat()
                     }
-                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48))
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(44))
                     setOnClickListener {
                         googleSignInManager.signOut()
                         authManager.clearSession()
@@ -172,24 +176,36 @@ class SettingsActivity : AppCompatActivity() {
                 addView(TextView(this@SettingsActivity).apply {
                     text = "Not Connected"
                     setTextColor(getColor(R.color.text_secondary))
-                    textSize = 16f
-                    setPadding(0, 0, 0, dp(16))
+                    textSize = 15f
+                    setPadding(0, 0, 0, dp(12))
                 })
                 addView(Button(this@SettingsActivity).apply {
-                    text = "CONNECT WITH GOOGLE"
+                    text = "Connect with Google"
                     setTextColor(getColor(R.color.background))
-                    textSize = 13f
+                    textSize = 14f
                     typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                    isAllCaps = false
                     background = GradientDrawable().apply {
                         setColor(getColor(R.color.text_primary))
-                        cornerRadius = dp(8).toFloat()
+                        cornerRadius = dp(10).toFloat()
                     }
-                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48))
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(44))
                     setOnClickListener {
                         signInLauncher.launch(googleSignInManager.getSignInIntent())
                     }
                 })
             }
+        }
+    }
+
+    private fun buildKeyboardSizeSection(): LinearLayout {
+        val sizes = listOf(
+            "small" to "Small",
+            "medium" to "Medium",
+            "large" to "Large"
+        )
+        return buildChipGroup(sizes, settingsStore.keyboardSize) { selected ->
+            settingsStore.keyboardSize = selected
         }
     }
 
@@ -200,21 +216,9 @@ class SettingsActivity : AppCompatActivity() {
             "es" to "Spanish",
             "jv" to "Javanese"
         )
-        val currentTarget = settingsStore.targetLanguage
-
-        val radioGroup = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
-        for ((code, name) in languages) {
-            radioGroup.addView(RadioButton(this).apply {
-                text = name
-                setTextColor(getColor(R.color.text_primary))
-                textSize = 16f
-                setPadding(dp(12), dp(12), 0, dp(12))
-                isChecked = code == currentTarget
-                buttonTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_blue))
-                setOnClickListener { settingsStore.targetLanguage = code }
-            })
+        return buildChipGroup(languages, settingsStore.targetLanguage) { selected ->
+            settingsStore.targetLanguage = selected
         }
-        return LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(radioGroup) }
     }
     
     private fun buildToneSection(): LinearLayout {
@@ -223,21 +227,202 @@ class SettingsActivity : AppCompatActivity() {
             "professional" to "Professional",
             "casual" to "Casual"
         )
-        val currentTone = settingsStore.tone
-
-        val radioGroup = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
-        for ((code, name) in tones) {
-            radioGroup.addView(RadioButton(this).apply {
-                text = name
-                setTextColor(getColor(R.color.text_primary))
-                textSize = 16f
-                setPadding(dp(12), dp(12), 0, dp(12))
-                isChecked = code == currentTone
-                buttonTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_blue))
-                setOnClickListener { settingsStore.tone = code }
-            })
+        return buildChipGroup(tones, settingsStore.tone) { selected ->
+            settingsStore.tone = selected
         }
-        return LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(radioGroup) }
+    }
+
+    /**
+     * Build color palette selector with colored circle swatches.
+     */
+    private fun buildColorSection(): LinearLayout {
+        val palettes = settingsStore.accentPalettes
+        val currentColor = settingsStore.accentColor
+        val swatchViews = mutableListOf<View>()
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        for (palette in palettes) {
+            val isSelected = palette.name == currentColor
+            val swatchSize = dp(36)
+            val swatch = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(swatchSize, swatchSize).apply {
+                    setMargins(0, 0, dp(10), 0)
+                }
+                background = createSwatchDrawable(palette.keyBg, isSelected)
+                setOnClickListener {
+                    settingsStore.accentColor = palette.name
+                    // Update all swatches
+                    for ((i, sv) in swatchViews.withIndex()) {
+                        sv.background = createSwatchDrawable(
+                            palettes[i].keyBg,
+                            palettes[i].name == palette.name
+                        )
+                    }
+                }
+            }
+            swatchViews.add(swatch)
+            container.addView(swatch)
+        }
+
+        // Wrap in a horizontal scroll
+        val scrollView = android.widget.HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(container)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(scrollView)
+        }
+    }
+
+    private fun createSwatchDrawable(color: Int, isSelected: Boolean): android.graphics.drawable.LayerDrawable {
+        val circle = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(color)
+        }
+        
+        if (isSelected) {
+            val ring = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(android.graphics.Color.TRANSPARENT)
+                setStroke(dp(2), android.graphics.Color.WHITE)
+            }
+            return android.graphics.drawable.LayerDrawable(arrayOf(circle, ring))
+        }
+        
+        return android.graphics.drawable.LayerDrawable(arrayOf(circle))
+    }
+
+    private fun buildKeyShapeSection(): LinearLayout {
+        val shapes = listOf(
+            "rounded" to "Rounded",
+            "semi" to "Semi",
+            "square" to "Square"
+        )
+        return buildChipGroup(shapes, settingsStore.keyShape) { selected ->
+            settingsStore.keyShape = selected
+        }
+    }
+
+    /**
+     * Creates a modern chip/pill selector group.
+     * Only one chip can be selected at a time — tapping a chip immediately
+     * updates the visual state and persists the selection.
+     */
+    private fun buildChipGroup(
+        options: List<Pair<String, String>>,
+        currentValue: String,
+        onSelect: (String) -> Unit
+    ): LinearLayout {
+        val chipViews = mutableListOf<TextView>()
+        
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.START
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        // Use a FlowLayout-like approach with wrapping
+        val flowContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        // Create rows of chips (wrap if needed)
+        var currentRow = createChipRow()
+        var currentRowWidth = 0
+        val maxWidth = resources.displayMetrics.widthPixels - dp(80) // account for padding
+
+        for ((code, label) in options) {
+            val chip = createChip(label, code == currentValue)
+            chipViews.add(chip)
+            
+            // Estimate chip width
+            val estimatedWidth = dp(16 + 24) + (label.length * dp(8))
+            
+            if (currentRowWidth + estimatedWidth > maxWidth && currentRowWidth > 0) {
+                flowContainer.addView(currentRow)
+                currentRow = createChipRow()
+                currentRowWidth = 0
+            }
+            
+            chip.setOnClickListener {
+                // Update all chips visually
+                for ((i, chipView) in chipViews.withIndex()) {
+                    val isSelected = options[i].first == code
+                    updateChipStyle(chipView, isSelected)
+                }
+                onSelect(code)
+            }
+            
+            currentRow.addView(chip)
+            currentRowWidth += estimatedWidth
+        }
+        
+        flowContainer.addView(currentRow)
+        return flowContainer
+    }
+
+    private fun createChipRow(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.START
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, 0, 0, dp(6)) }
+        }
+    }
+
+    private fun createChip(label: String, isSelected: Boolean): TextView {
+        return TextView(this).apply {
+            text = label
+            textSize = 14f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            gravity = Gravity.CENTER
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, 0, dp(8), 0) }
+            
+            updateChipStyle(this, isSelected)
+        }
+    }
+
+    private fun updateChipStyle(chip: TextView, isSelected: Boolean) {
+        if (isSelected) {
+            chip.background = GradientDrawable().apply {
+                setColor(Color.parseColor("#1A5C46"))
+                cornerRadius = dp(20).toFloat()
+            }
+            chip.setTextColor(Color.parseColor("#7DCDB3"))
+        } else {
+            chip.background = GradientDrawable().apply {
+                setColor(Color.parseColor("#1C1F22"))
+                cornerRadius = dp(20).toFloat()
+            }
+            chip.setTextColor(getColor(R.color.text_secondary))
+        }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
