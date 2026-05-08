@@ -5,21 +5,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
-import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
-import android.util.TypedValue
 import android.view.View
-import android.view.WindowInsets
-import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.morfoboard.app.MainActivity
 import com.morfoboard.app.R
@@ -42,10 +40,8 @@ class MorfoboardIME : InputMethodService() {
         // Production server IP
         private const val DEFAULT_BASE_URL = "http://43.156.68.104:8080"
         
-        // Keyboard height configuration
-        private const val MIN_KEYBOARD_HEIGHT_DP = 220
-        private const val MAX_KEYBOARD_HEIGHT_DP = 320
-        private const val KEYBOARD_HEIGHT_PERCENTAGE = 0.38f // 38% of available height
+        // Keyboard height: percentage of screen height for the keyboard area
+        private const val KEYBOARD_HEIGHT_RATIO = 0.32f
     }
 
     private lateinit var rootLayout: FrameLayout
@@ -161,9 +157,9 @@ class MorfoboardIME : InputMethodService() {
         )
         mainLayout.addView(actionBarCtrl.view)
 
-        // Keyboard with proper height calculation
+        // Keyboard with adaptive height
         keyboardView = KeyboardView(this) { key -> handleKeyPress(key) }
-        val keyboardHeight = calculateOptimalKeyboardHeight()
+        val keyboardHeight = calculateKeyboardHeight()
         keyboardView.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             keyboardHeight
@@ -171,70 +167,42 @@ class MorfoboardIME : InputMethodService() {
         mainLayout.addView(keyboardView)
 
         rootLayout.addView(mainLayout)
+        
+        // Apply window insets to add bottom padding for devices where the system
+        // IME navigation overlaps with our keyboard (e.g. Vivo, some Samsung)
+        ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val bottomInset = maxOf(systemBars.bottom, navBars.bottom)
+            
+            // Only apply padding if the system is actually overlapping our view
+            mainLayout.setPadding(0, 0, 0, bottomInset)
+            
+            Log.d(TAG, "WindowInsets applied - bottom: ${bottomInset}px")
+            WindowInsetsCompat.CONSUMED
+        }
 
         // Bottom sheet presenter
         bottomSheetPresenter = BottomSheetPresenter(this, rootLayout)
 
-        Log.d(TAG, "onCreateInputView complete - Keyboard height: ${keyboardHeight}px")
+        Log.d(TAG, "onCreateInputView complete - keyboard: ${keyboardHeight}px")
         return rootLayout
     }
 
     /**
-     * Calculate optimal keyboard height accounting for system UI and screen density.
-     * This fixes the overlap issue with navigation bar on high-resolution devices.
+     * Calculate keyboard height as a ratio of screen height.
+     * This ensures the keyboard is always proportionally sized regardless of resolution.
      */
-    private fun calculateOptimalKeyboardHeight(): Int {
-        val displayMetrics = resources.displayMetrics
-        val screenHeight = displayMetrics.heightPixels
-        val density = displayMetrics.density
+    private fun calculateKeyboardHeight(): Int {
+        val screenHeight = resources.displayMetrics.heightPixels
+        val targetHeight = (screenHeight * KEYBOARD_HEIGHT_RATIO).toInt()
         
-        // Get navigation bar height if available
-        val navigationBarHeight = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window?.window?.let { window ->
-                val insets = window.decorView.rootWindowInsets
-                insets?.getInsets(WindowInsets.Type.navigationBars())?.bottom ?: 0
-            } ?: getNavigationBarHeightFallback()
-        } else {
-            getNavigationBarHeightFallback()
-        }
+        // Minimum 200dp, maximum 280dp in pixels
+        val density = resources.displayMetrics.density
+        val minPx = (200 * density).toInt()
+        val maxPx = (280 * density).toInt()
         
-        // Calculate available height (screen height minus navigation bar)
-        val availableHeight = screenHeight - navigationBarHeight
-        
-        // Calculate target height based on percentage of available space
-        val targetHeight = (availableHeight * KEYBOARD_HEIGHT_PERCENTAGE).toInt()
-        
-        // Convert DP limits to pixels
-        val minHeightPx = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            MIN_KEYBOARD_HEIGHT_DP.toFloat(),
-            displayMetrics
-        ).toInt()
-        
-        val maxHeightPx = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            MAX_KEYBOARD_HEIGHT_DP.toFloat(),
-            displayMetrics
-        ).toInt()
-        
-        // Clamp to min/max bounds
-        val finalHeight = targetHeight.coerceIn(minHeightPx, maxHeightPx)
-        
-        Log.d(TAG, "Screen: ${screenHeight}px, Nav bar: ${navigationBarHeight}px, Available: ${availableHeight}px, Keyboard: ${finalHeight}px (density: $density)")
-        
-        return finalHeight
-    }
-    
-    /**
-     * Fallback method to get navigation bar height for older Android versions.
-     */
-    private fun getNavigationBarHeightFallback(): Int {
-        val resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
-        return if (resourceId > 0) {
-            resources.getDimensionPixelSize(resourceId)
-        } else {
-            0
-        }
+        return targetHeight.coerceIn(minPx, maxPx)
     }
 
     override fun onDestroy() {

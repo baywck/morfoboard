@@ -4,16 +4,13 @@ import android.content.Context
 import android.graphics.Typeface
 import android.graphics.Color
 import android.media.AudioManager
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.util.DisplayMetrics
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
-import android.view.WindowInsets
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.PopupWindow
@@ -38,17 +35,8 @@ class KeyboardView(
         orientation = VERTICAL
         // Integrated matte surface: no floating card, no outer border.
         setBackgroundResource(R.drawable.keyboard_background_rounded)
-        setPadding(dp(8), dp(4), dp(8), dp(10)) // Balanced padding for better visual appearance
+        setPadding(dp(6), dp(2), dp(6), dp(8))
         clipToPadding = false
-        
-        // Set up window insets listener for proper sizing with system UI
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            setOnApplyWindowInsetsListener { v, insets ->
-                renderLayout()
-                v.onApplyWindowInsets(insets)
-            }
-        }
-        
         renderLayout()
     }
 
@@ -74,7 +62,7 @@ class KeyboardView(
             orientation = HORIZONTAL
             gravity = Gravity.CENTER
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f).apply {
-                setMargins(0, 0, 0, 0) // Remove row margins to balance with horizontal key margins
+                setMargins(0, 0, 0, 0)
             }
 
             for (key in keys) {
@@ -82,37 +70,6 @@ class KeyboardView(
                 addView(keyView)
             }
         }
-    }
-    
-    /**
-     * Calculate optimal key height based on screen size and density.
-     */
-    private fun calculateKeyHeight(): Int {
-        val displayMetrics = context.resources.displayMetrics
-        val screenHeight = displayMetrics.heightPixels
-        val density = displayMetrics.density
-        
-        // Base height in DP, scaled by screen density category
-        val baseHeightDp = when {
-            density >= 3.5f -> 52  // Very high density (xxxhdpi+)
-            density >= 3.0f -> 48  // High density (xxhdpi)
-            density >= 2.0f -> 44  // Medium-high density (xhdpi)
-            else -> 42             // Standard density
-        }
-        
-        // Scale based on actual screen height
-        val scaleFactor = when {
-            screenHeight >= 2560 -> 1.15f  // QHD+ displays
-            screenHeight >= 1920 -> 1.0f   // FHD displays
-            screenHeight >= 1280 -> 0.9f   // HD displays
-            else -> 0.85f                  // Smaller screens
-        }
-        
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            baseHeightDp * scaleFactor,
-            displayMetrics
-        ).toInt()
     }
 
     private fun createKeyView(key: KeyDef): View {
@@ -174,9 +131,8 @@ class KeyboardView(
 
             setBackgroundResource(bgRes)
 
-            val keyHeight = calculateKeyHeight()
-            layoutParams = LayoutParams(0, keyHeight, key.widthWeight).apply {
-                setMargins(dp(2), dp(2), dp(2), dp(2)) // Balanced margins for better touch targets
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, key.widthWeight).apply {
+                setMargins(dp(1), dp(1), dp(1), dp(1))
             }
 
             // High-end startup product design: minimal, no default shadows, controlled elevation

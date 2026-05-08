@@ -28,12 +28,9 @@ class ActionBarController(
     val view: LinearLayout = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        setPadding(dp(12), dp(6), dp(12), dp(6)) // Reduced vertical padding for better fit
+        setPadding(dp(12), dp(8), dp(12), dp(8)) // Balanced padding
         gravity = Gravity.CENTER_VERTICAL
         visibility = View.VISIBLE
-        
-        // Set minimum height based on screen density
-        minimumHeight = dp(44)
     }
 
     private lateinit var translateBtn: LinearLayout
@@ -128,32 +125,29 @@ class ActionBarController(
         primary: Boolean,
         onClick: () -> Unit
     ): LinearLayout {
-        // Calculate button height based on screen density
-        val buttonHeight = dp(32)
-        
         return LinearLayout(view.context).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundResource(if (primary) R.drawable.login_btn_bg else R.drawable.action_btn_bg)
-            setPadding(dp(12), dp(4), dp(12), dp(4))
+            setPadding(dp(10), 0, dp(10), 0)
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                buttonHeight
+                dp(28)
             ).apply { marginEnd = dp(8) }
 
             val iconView = TextView(view.context).apply {
                 text = icon
                 setTextColor(view.context.getColor(if (primary) R.color.login_btn_text else R.color.accent_blue))
-                textSize = if (primary) 14f else 13f
+                textSize = if (primary) 13f else 12f
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 gravity = Gravity.CENTER
             }
             val labelView = TextView(view.context).apply {
                 text = label
                 setTextColor(view.context.getColor(if (primary) R.color.login_btn_text else R.color.key_text_bright))
-                textSize = 12f
+                textSize = 11f
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                setPadding(dp(6), 0, 0, 0)
+                setPadding(dp(5), 0, 0, 0)
                 gravity = Gravity.CENTER
             }
 
