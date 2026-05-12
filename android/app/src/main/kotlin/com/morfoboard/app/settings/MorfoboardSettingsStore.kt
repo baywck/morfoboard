@@ -16,6 +16,8 @@ class MorfoboardSettingsStore(context: Context) {
         private const val KEY_ACCENT_COLOR = "accent_color"
         private const val KEY_KEY_SHAPE = "key_shape"
         private const val KEY_THEME = "theme"
+        private const val KEY_SOUND = "key_sound"
+        private const val KEY_HAPTIC = "key_haptic"
     }
 
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -47,6 +49,16 @@ class MorfoboardSettingsStore(context: Context) {
     var theme: String
         get() = prefs.getString(KEY_THEME, "dark") ?: "dark"
         set(value) = prefs.edit().putString(KEY_THEME, value).apply()
+
+    /** Key press sound enabled */
+    var keySoundEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SOUND, true)
+        set(value) = prefs.edit().putBoolean(KEY_SOUND, value).apply()
+
+    /** Key press haptic/vibration enabled */
+    var keyHapticEnabled: Boolean
+        get() = prefs.getBoolean(KEY_HAPTIC, true)
+        set(value) = prefs.edit().putBoolean(KEY_HAPTIC, value).apply()
 
     val isDarkTheme: Boolean get() = theme != "light"
 

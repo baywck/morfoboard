@@ -88,6 +88,7 @@ class SettingsActivity : AppCompatActivity() {
             addView(buildSection("ACCOUNT") { addView(buildAccountSection()) })
             addView(buildSection("THEME") { addView(buildThemeSection()) })
             addView(buildSection("KEYBOARD SIZE") { addView(buildKeyboardSizeSection()) })
+            addView(buildSection("FEEDBACK") { addView(buildFeedbackSection()) })
             addView(buildSection("ACCENT COLOR") { addView(buildColorSection()) })
             addView(buildSection("KEY SHAPE") { addView(buildKeyShapeSection()) })
             addView(buildSection("AI TARGET LANGUAGE") { addView(buildLanguageSection()) })
@@ -217,6 +218,73 @@ class SettingsActivity : AppCompatActivity() {
         )
         return buildChipGroup(themes, settingsStore.theme) { selected ->
             settingsStore.theme = selected
+        }
+    }
+
+    private fun buildFeedbackSection(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+
+            // Sound toggle
+            addView(buildToggleRow("Key Sound", settingsStore.keySoundEnabled) { enabled ->
+                settingsStore.keySoundEnabled = enabled
+            })
+
+            // Haptic toggle
+            addView(buildToggleRow("Haptic Vibration", settingsStore.keyHapticEnabled) { enabled ->
+                settingsStore.keyHapticEnabled = enabled
+            })
+        }
+    }
+
+    private fun buildToggleRow(label: String, isEnabled: Boolean, onToggle: (Boolean) -> Unit): LinearLayout {
+        var currentState = isEnabled
+
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(8), 0, dp(8))
+
+            val labelView = TextView(this@SettingsActivity).apply {
+                text = label
+                setTextColor(getColor(R.color.text_primary))
+                textSize = 15f
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            addView(labelView)
+
+            val toggleView = TextView(this@SettingsActivity).apply {
+                text = if (currentState) "ON" else "OFF"
+                textSize = 13f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                gravity = Gravity.CENTER
+                setPadding(dp(14), dp(8), dp(14), dp(8))
+                updateToggleStyle(this, currentState)
+
+                setOnClickListener {
+                    currentState = !currentState
+                    text = if (currentState) "ON" else "OFF"
+                    updateToggleStyle(this, currentState)
+                    onToggle(currentState)
+                }
+            }
+            addView(toggleView)
+        }
+    }
+
+    private fun updateToggleStyle(view: TextView, isOn: Boolean) {
+        if (isOn) {
+            view.background = GradientDrawable().apply {
+                setColor(Color.parseColor("#1A5C46"))
+                cornerRadius = dp(14).toFloat()
+            }
+            view.setTextColor(Color.parseColor("#7DCDB3"))
+        } else {
+            view.background = GradientDrawable().apply {
+                setColor(Color.parseColor("#1C1F22"))
+                cornerRadius = dp(14).toFloat()
+            }
+            view.setTextColor(getColor(R.color.text_secondary))
         }
     }
 

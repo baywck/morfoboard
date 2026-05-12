@@ -301,7 +301,11 @@ class KeyboardView(
         }
 
         // Touch handling
-        container.setOnTouchListener(KeyTouchListener(key, audioManager, onKeyAction))
+        container.setOnTouchListener(KeyTouchListener(
+            key, audioManager, onKeyAction,
+            soundEnabled = settingsStore.keySoundEnabled,
+            hapticEnabled = settingsStore.keyHapticEnabled
+        ))
         container.isClickable = true
 
         return container
@@ -397,7 +401,9 @@ class KeyboardView(
 class KeyTouchListener(
     private val key: KeyDef,
     private val audioManager: AudioManager?,
-    private val onKeyAction: (KeyDef) -> Unit
+    private val onKeyAction: (KeyDef) -> Unit,
+    private val soundEnabled: Boolean = true,
+    private val hapticEnabled: Boolean = true
 ) : View.OnTouchListener {
 
     private var isHolding = false
@@ -427,8 +433,12 @@ class KeyTouchListener(
             MotionEvent.ACTION_DOWN -> {
                 v.isPressed = true
                 longPressTriggered = false
-                v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, -1f)
+                if (hapticEnabled) {
+                    v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                }
+                if (soundEnabled) {
+                    audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, -1f)
+                }
                 
                 // Always emit primary immediately for responsive typing
                 onKeyAction(key)
