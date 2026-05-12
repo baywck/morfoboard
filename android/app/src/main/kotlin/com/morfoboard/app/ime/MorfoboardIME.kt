@@ -341,6 +341,10 @@ class MorfoboardIME : InputMethodService() {
                 keyboardView.toggleSymbolPage()
             }
 
+            KeyType.EMOJI_TOGGLE -> {
+                keyboardView.toggleEmojiMode()
+            }
+
             KeyType.LANGUAGE -> {
                 Log.d(TAG, "Language key pressed")
             }

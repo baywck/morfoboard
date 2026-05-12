@@ -30,6 +30,8 @@ class KeyboardView(
     private var shiftState = ShiftState.OFF
     private var isSymbolMode = false
     private var isSymbolPage2 = false
+    private var isEmojiMode = false
+    private var emojiPage = 0
     private val keyRows = mutableListOf<LinearLayout>()
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private val settingsStore = MorfoboardSettingsStore(context)
@@ -52,6 +54,11 @@ class KeyboardView(
         removeAllViews()
         keyRows.clear()
 
+        if (isEmojiMode) {
+            renderEmojiLayout()
+            return
+        }
+
         val rows = if (isSymbolMode) {
             if (isSymbolPage2) KeyboardLayouts.getSymbol2Rows() else KeyboardLayouts.getSymbolRows()
         } else {
@@ -63,6 +70,119 @@ class KeyboardView(
             addView(rowLayout)
             keyRows.add(rowLayout)
         }
+    }
+
+    private fun renderEmojiLayout() {
+        val themeColors = settingsStore.currentThemeColors
+        val emojis = KeyboardLayouts.emojiPages.getOrElse(emojiPage) { KeyboardLayouts.emojiPages[0] }
+
+        // Emoji grid: 8 columns
+        val columns = 8
+        val emojiRows = emojis.chunked(columns)
+
+        for (row in emojiRows) {
+            val rowLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
+            }
+
+            for (emoji in row) {
+                val btn = Button(context).apply {
+                    text = emoji
+                    textSize = 22f
+                    gravity = Gravity.CENTER
+                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
+                    setPadding(0, 0, 0, 0)
+                    minimumWidth = 0
+                    minimumHeight = 0
+                    elevation = 0f
+                    stateListAnimator = null
+
+                    setOnClickListener {
+                        performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                        onKeyAction(KeyDef(emoji, code = 0, keyType = KeyType.CHARACTER))
+                    }
+                }
+                rowLayout.addView(btn)
+            }
+            addView(rowLayout)
+        }
+
+        // Bottom bar: ABC, page indicators, backspace
+        val bottomBar = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.8f)
+        }
+
+        // ABC button
+        val abcBtn = Button(context).apply {
+            text = "ABC"
+            textSize = 13f
+            setTextColor(themeColors.textPrimary)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1.5f)
+            setPadding(0, 0, 0, 0)
+            minimumWidth = 0
+            elevation = 0f
+            stateListAnimator = null
+            setOnClickListener { toggleEmojiMode() }
+        }
+        bottomBar.addView(abcBtn)
+
+        // Page buttons
+        for (i in KeyboardLayouts.emojiPages.indices) {
+            val pageBtn = Button(context).apply {
+                text = when (i) { 0 -> "☺"; 1 -> "👍"; else -> "🔥" }
+                textSize = 16f
+                alpha = if (i == emojiPage) 1f else 0.4f
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
+                setPadding(0, 0, 0, 0)
+                minimumWidth = 0
+                elevation = 0f
+                stateListAnimator = null
+                setOnClickListener {
+                    emojiPage = i
+                    renderLayout()
+                }
+            }
+            bottomBar.addView(pageBtn)
+        }
+
+        // Spacer
+        bottomBar.addView(View(context).apply {
+            layoutParams = LayoutParams(0, 1, 1.5f)
+        })
+
+        // Backspace
+        val bsBtn = Button(context).apply {
+            text = "⌫"
+            textSize = 18f
+            setTextColor(themeColors.textSecondary)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1.5f)
+            setPadding(0, 0, 0, 0)
+            minimumWidth = 0
+            elevation = 0f
+            stateListAnimator = null
+            setOnClickListener {
+                performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                onKeyAction(KeyDef("⌫", code = 0, keyType = KeyType.BACKSPACE, isSpecial = true))
+            }
+        }
+        bottomBar.addView(bsBtn)
+
+        addView(bottomBar)
+    }
+
+    fun toggleEmojiMode() {
+        isEmojiMode = !isEmojiMode
+        if (!isEmojiMode) emojiPage = 0
+        isSymbolMode = false
+        renderLayout()
     }
 
     private fun createRow(keys: List<KeyDef>): LinearLayout {
@@ -218,6 +338,7 @@ class KeyboardView(
     fun toggleSymbolMode() {
         isSymbolMode = !isSymbolMode
         isSymbolPage2 = false
+        isEmojiMode = false
         shiftState = ShiftState.OFF
         renderLayout()
     }
@@ -237,6 +358,7 @@ class KeyboardView(
             KeyType.SPACE -> "MORFOBOARD"
             KeyType.SYMBOL_TOGGLE -> if (isSymbolMode) "ABC" else "?123"
             KeyType.SYMBOL_PAGE_TOGGLE -> if (isSymbolPage2) "?123" else "=\\<"
+            KeyType.EMOJI_TOGGLE -> "☺"
             else -> key.label.uppercase()
         }
     }

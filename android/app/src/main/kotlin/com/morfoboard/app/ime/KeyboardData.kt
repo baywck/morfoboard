@@ -19,6 +19,7 @@ enum class KeyType {
     SPACE,
     SYMBOL_TOGGLE,
     SYMBOL_PAGE_TOGGLE,
+    EMOJI_TOGGLE,
     LANGUAGE,
     ACTION_AI
 }
@@ -72,10 +73,38 @@ object KeyboardLayouts {
 
     val bottomRow = listOf(
         KeyDef("123", code = 0, keyType = KeyType.SYMBOL_TOGGLE, isSpecial = true, widthWeight = 1.25f),
-        KeyDef(",", code = ch(','), widthWeight = 1.05f),
+        KeyDef("☺", code = 0, keyType = KeyType.EMOJI_TOGGLE, widthWeight = 1.05f),
         KeyDef(" ", code = ch(' '), keyType = KeyType.SPACE, widthWeight = 4.8f),
         KeyDef(".", code = ch('.'), widthWeight = 0.9f),
         KeyDef("↵", code = 0, keyType = KeyType.ENTER, isSpecial = true, widthWeight = 1.35f),
+    )
+
+    // Emoji pages
+    val emojiPages: List<List<String>> = listOf(
+        // Page 1: Smileys & People
+        listOf(
+            "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂",
+            "🙂", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗",
+            "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭",
+            "🤫", "🤔", "🤐", "🤨", "😐", "😑", "😶", "😏",
+            "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤"
+        ),
+        // Page 2: Gestures & Hearts
+        listOf(
+            "👍", "👎", "👊", "✊", "🤛", "🤜", "👏", "🙌",
+            "👐", "🤲", "🤝", "🙏", "✌️", "🤞", "🤟", "🤘",
+            "👌", "🤌", "👈", "👉", "👆", "👇", "☝️", "✋",
+            "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍",
+            "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘"
+        ),
+        // Page 3: Objects & Symbols
+        listOf(
+            "🔥", "⭐", "🌟", "✨", "💫", "🎉", "🎊", "🎈",
+            "💯", "💢", "💥", "💦", "💨", "🕳️", "💣", "💬",
+            "👁️", "🗨️", "🗯️", "💭", "💤", "👋", "🤚", "🖐️",
+            "✅", "❌", "⭕", "❗", "❓", "‼️", "⁉️", "💡",
+            "🎵", "🎶", "🔔", "📌", "📍", "🏷️", "💰", "🎁"
+        )
     )
 
     val symbolRow1 = listOf(
