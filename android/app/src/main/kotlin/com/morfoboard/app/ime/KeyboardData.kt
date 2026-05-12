@@ -74,8 +74,8 @@ object KeyboardLayouts {
 
     val bottomRow = listOf(
         KeyDef("123", code = 0, keyType = KeyType.SYMBOL_TOGGLE, isSpecial = true, widthWeight = 1.2f),
+        KeyDef("🤫", code = 0, keyType = KeyType.EMOJI_TOGGLE, widthWeight = 0.9f),
         KeyDef(",", code = ch(','), widthWeight = 0.9f),
-        KeyDef("☺", code = 0, keyType = KeyType.EMOJI_TOGGLE, widthWeight = 0.9f),
         KeyDef(" ", code = ch(' '), keyType = KeyType.SPACE, widthWeight = 4.1f),
         KeyDef(".", code = ch('.'), widthWeight = 0.9f),
         KeyDef("↵", code = 0, keyType = KeyType.ENTER, isSpecial = true, widthWeight = 1.35f),

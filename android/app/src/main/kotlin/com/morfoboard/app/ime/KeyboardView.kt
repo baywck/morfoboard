@@ -368,7 +368,7 @@ class KeyboardView(
             KeyType.SPACE -> "MORFOBOARD"
             KeyType.SYMBOL_TOGGLE -> if (isSymbolMode) "ABC" else "?123"
             KeyType.SYMBOL_PAGE_TOGGLE -> if (isSymbolPage2) "?123" else "=\\<"
-            KeyType.EMOJI_TOGGLE -> "☺"
+            KeyType.EMOJI_TOGGLE -> "🤫"
             else -> key.label.uppercase()
         }
     }
