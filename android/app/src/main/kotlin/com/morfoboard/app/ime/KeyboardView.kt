@@ -2,8 +2,8 @@ package com.morfoboard.app.ime
 
 import android.content.Context
 import android.graphics.Typeface
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
@@ -13,8 +13,8 @@ import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.PopupWindow
 import android.widget.TextView
 import com.morfoboard.app.R
 import com.morfoboard.app.settings.MorfoboardSettingsStore
@@ -35,6 +35,16 @@ class KeyboardView(
     private val keyRows = mutableListOf<LinearLayout>()
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private val settingsStore = MorfoboardSettingsStore(context)
+    
+    // Cached typefaces to avoid repeated allocation
+    private val typefaceMedium: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    private val typefaceNormal: Typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+    
+    // Cached accent letter sets
+    private companion object {
+        val ACCENT_LETTERS = setOf("n", "o", "a", "f", "r")
+        val SECONDARY_LETTERS = setOf("w", "j", "z", "x", "b")
+    }
 
     init {
         orientation = VERTICAL
@@ -201,14 +211,11 @@ class KeyboardView(
     }
 
     private fun createKeyView(key: KeyDef): View {
-        val accentLetters = setOf("n", "o", "a", "f", "r")
-        val secondaryLetters = setOf("w", "j", "z", "x", "b")
-        
         val themeColors = settingsStore.currentThemeColors
         val cornerRadius = settingsStore.keyCornerRadiusDp
 
-        val isAccent = key.keyType == KeyType.CHARACTER && accentLetters.contains(key.label.lowercase())
-        val isSecondaryStyle = key.keyType == KeyType.CHARACTER && secondaryLetters.contains(key.label.lowercase())
+        val isAccent = key.keyType == KeyType.CHARACTER && ACCENT_LETTERS.contains(key.label.lowercase())
+        val isSecondaryStyle = key.keyType == KeyType.CHARACTER && SECONDARY_LETTERS.contains(key.label.lowercase())
 
         // Key background
         val keyBg = when {
@@ -228,7 +235,7 @@ class KeyboardView(
         }
 
         // Use FrameLayout to overlay secondary hint
-        val container = android.widget.FrameLayout(context).apply {
+        val container = FrameLayout(context).apply {
             tag = key
             background = keyBg
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, key.widthWeight).apply {
@@ -254,12 +261,12 @@ class KeyboardView(
                 KeyType.EMOJI_TOGGLE -> 18f
                 else -> 16f
             }
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            typeface = typefaceMedium
             letterSpacing = if (key.keyType == KeyType.CHARACTER || key.keyType == KeyType.SPACE) 0.04f else 0.01f
             gravity = Gravity.CENTER
-            layoutParams = android.widget.FrameLayout.LayoutParams(
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
             )
 
             if (key.label.equals("m", ignoreCase = true)) {
@@ -280,11 +287,11 @@ class KeyboardView(
                 text = key.secondaryLabel
                 setTextColor(hintColor)
                 textSize = 9f
-                typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+                typeface = typefaceNormal
                 gravity = Gravity.CENTER
-                layoutParams = android.widget.FrameLayout.LayoutParams(
-                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
-                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                layoutParams = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
                     Gravity.TOP or Gravity.END
                 ).apply {
                     setMargins(0, dp(2), dp(4), 0)
@@ -303,7 +310,7 @@ class KeyboardView(
     /**
      * Create a programmatic key background drawable with dynamic color and corner radius.
      */
-    private fun createKeyBackground(color: Int, pressedColor: Int, cornerRadiusDp: Float): android.graphics.drawable.StateListDrawable {
+    private fun createKeyBackground(color: Int, pressedColor: Int, cornerRadiusDp: Float): StateListDrawable {
         val radiusPx = dp(cornerRadiusDp.toInt()).toFloat()
         
         val normalDrawable = GradientDrawable().apply {
@@ -318,7 +325,7 @@ class KeyboardView(
             cornerRadius = radiusPx
         }
         
-        return android.graphics.drawable.StateListDrawable().apply {
+        return StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
             addState(intArrayOf(), normalDrawable)
         }
@@ -333,7 +340,7 @@ class KeyboardView(
             for (i in 0 until childCount) {
                 val row = getChildAt(i) as? LinearLayout ?: continue
                 for (j in 0 until row.childCount) {
-                    val container = row.getChildAt(j) as? android.widget.FrameLayout ?: continue
+                    val container = row.getChildAt(j) as? FrameLayout ?: continue
                     val key = container.tag as? KeyDef ?: continue
                     if (key.keyType == KeyType.CHARACTER && key.code != 0) {
                         // First child is the main label TextView

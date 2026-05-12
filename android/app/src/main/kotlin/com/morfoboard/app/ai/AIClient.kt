@@ -105,36 +105,9 @@ class AIClient(
         targetLanguage: String = "en",
         tone: String = "natural"
     ): Result<AIProcessResponse> = process(action.apiValue, text, targetLanguage, tone)
-
-    private fun buildTranslationPrompt(targetLanguage: String, tone: String): String {
-        val langName = when (targetLanguage) {
-            "id" -> "Indonesian"
-            "jv" -> "Javanese"
-            "en" -> "English"
-            "es" -> "Spanish"
-            else -> targetLanguage
-        }
-        return """You are a translator. Translate the user's text to $langName.
-
-Rules:
-- Write in a $tone tone
-- Preserve the original meaning
-- Use natural, idiomatic expressions
-- Return ONLY the translated text, no explanations"""
-    }
-
-    private fun buildFixTextPrompt(): String {
-        return """You are a text correction assistant. Fix all spelling and grammar errors.
-
-Rules:
-- Preserve the original language and tone
-- Fix typos and grammar mistakes
-- If no errors, return text unchanged
-- Return ONLY the corrected text, no explanations"""
-    }
 }
 
-// 9router response model
+// 9router response model (kept for potential direct-mode usage)
 data class NineRouterResponse(
     val choices: List<Choice>?,
     val model: String?

@@ -56,6 +56,9 @@ class MorfoboardIME : InputMethodService() {
 
     private var shiftState = ShiftState.OFF
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    
+    // Cached regex for auto-caps detection (avoid recompilation per keystroke)
+    private val autoCapsRegex = Regex(".*[.?!]\\s+$")
 
     // ─────────────────────────────────────────────
     // Lifecycle
@@ -204,6 +207,8 @@ class MorfoboardIME : InputMethodService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
         connectivityMonitor.stop()
         scope.cancel()
     }
@@ -253,10 +258,9 @@ class MorfoboardIME : InputMethodService() {
         val ic = currentInputConnection ?: return
         val textBefore = ic.getTextBeforeCursor(3, 0) ?: ""
         
-        // Auto-caps if empty (start of field), new line, or after punctuation and space
         val shouldCaps = textBefore.isEmpty() || 
                          textBefore.endsWith("\n") || 
-                         textBefore.matches(Regex(".*[.?!]\\s+$"))
+                         textBefore.matches(autoCapsRegex)
                          
         val newState = if (shouldCaps) ShiftState.SINGLE else ShiftState.OFF
         if (shiftState != newState) {
@@ -492,35 +496,6 @@ class MorfoboardIME : InputMethodService() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)
-    }
-
-    private fun handleLoginTest() {
-        if (!authManager.isSignedIn) {
-            Toast.makeText(this, "Please sign in first in the app!", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        actionBarCtrl.setLoading(true)
-        scope.launch {
-            try {
-                val result = aiClient.process(
-                    action = "login_test",
-                    text = "Testing login flow"
-                )
-                result.onSuccess { response ->
-                    actionBarCtrl.setLoading(false)
-                    if (response.success && response.result != null) {
-                        // Apply it to the textarea
-                        val ic = currentInputConnection
-                        ic?.commitText(response.result, 1)
-                    }
-                }.onFailure { error ->
-                    handleAIError(error)
-                }
-            } catch (e: Exception) {
-                handleAIError(e)
-            }
-        }
     }
 
     // ─────────────────────────────────────────────
