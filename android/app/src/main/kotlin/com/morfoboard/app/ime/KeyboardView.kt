@@ -100,9 +100,8 @@ class KeyboardView(
                 label
             }
 
-            // Hero key 'M' branding
+            // Hero key 'M' branding: slightly transparent
             if (key.label.equals("m", ignoreCase = true)) {
-                text = "M"
                 alpha = 0.6f
             }
             
@@ -210,11 +209,6 @@ class KeyboardView(
                     val key = btn.tag as? KeyDef ?: continue
                     if (key.keyType == KeyType.CHARACTER && key.code != 0) {
                         btn.text = if (state == ShiftState.OFF) key.label.lowercase() else key.label.uppercase()
-                        // Ensure 'm' stays thin and transparent even after shift
-                        if (key.label.equals("m", ignoreCase = true)) {
-                            btn.text = "M"
-                            btn.alpha = 0.5f
-                        }
                     }
                 }
             }

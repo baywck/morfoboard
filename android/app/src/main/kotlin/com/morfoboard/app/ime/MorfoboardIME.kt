@@ -309,10 +309,18 @@ class MorfoboardIME : InputMethodService() {
 
             KeyType.ENTER -> {
                 val editorInfo = currentInputEditorInfo
-                val action = editorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
-                    ?: EditorInfo.IME_ACTION_UNSPECIFIED
-
-                if (action != EditorInfo.IME_ACTION_UNSPECIFIED &&
+                val imeOptions = editorInfo?.imeOptions ?: 0
+                val action = imeOptions and EditorInfo.IME_MASK_ACTION
+                val inputType = editorInfo?.inputType ?: 0
+                
+                // Check if the field is multi-line (e.g. WhatsApp chat, notes)
+                val isMultiLine = (inputType and android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0
+                
+                // If multi-line field, always insert newline
+                // If single-line with an action (Send, Search, Go, etc.), perform that action
+                if (isMultiLine) {
+                    ic.commitText("\n", 1)
+                } else if (action != EditorInfo.IME_ACTION_UNSPECIFIED &&
                     action != EditorInfo.IME_ACTION_NONE
                 ) {
                     ic.performEditorAction(action)
