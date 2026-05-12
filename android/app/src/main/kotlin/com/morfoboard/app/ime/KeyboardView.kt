@@ -391,6 +391,8 @@ class KeyboardView(
 
 /**
  * Handles key press with haptic feedback, sound feedback, and long-press for secondary characters.
+ * Primary character is emitted immediately on touch for zero-latency typing.
+ * Long-press (300ms) replaces the primary with the secondary character.
  */
 class KeyTouchListener(
     private val key: KeyDef,
@@ -414,9 +416,9 @@ class KeyTouchListener(
     private val longPressRunnable = Runnable {
         if (key.secondaryLabel != null && !longPressTriggered) {
             longPressTriggered = true
-            // Emit the secondary character
-            val secondaryKey = KeyDef(key.secondaryLabel, code = 0, keyType = KeyType.CHARACTER)
-            onKeyAction(secondaryKey)
+            // Delete the primary character that was already emitted, then emit secondary
+            onKeyAction(KeyDef("⌫", code = 0, keyType = KeyType.BACKSPACE, isSpecial = true))
+            onKeyAction(KeyDef(key.secondaryLabel, code = 0, keyType = KeyType.CHARACTER))
         }
     }
 
@@ -428,18 +430,15 @@ class KeyTouchListener(
                 v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, -1f)
                 
+                // Always emit primary immediately for responsive typing
+                onKeyAction(key)
+                
                 if (key.keyType == KeyType.BACKSPACE) {
-                    // Backspace: immediate action + repeat on hold
-                    onKeyAction(key)
                     isHolding = true
                     handler.postDelayed(repeatRunnable, 400)
                 } else if (key.secondaryLabel != null) {
-                    // Has secondary: short tap = primary, long press = secondary
-                    // Don't emit primary yet — wait to see if it's a long press
-                    handler.postDelayed(longPressRunnable, 300)
-                } else {
-                    // Normal key: immediate action
-                    onKeyAction(key)
+                    // Schedule long-press: will replace primary with secondary
+                    handler.postDelayed(longPressRunnable, 350)
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -449,9 +448,6 @@ class KeyTouchListener(
                 if (key.keyType == KeyType.BACKSPACE) {
                     isHolding = false
                     handler.removeCallbacks(repeatRunnable)
-                } else if (key.secondaryLabel != null && !longPressTriggered) {
-                    // Short tap — emit primary character
-                    onKeyAction(key)
                 }
                 longPressTriggered = false
             }
