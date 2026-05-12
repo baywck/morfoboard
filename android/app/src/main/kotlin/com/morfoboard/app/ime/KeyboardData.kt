@@ -8,7 +8,8 @@ data class KeyDef(
     val code: Int = 0,
     val widthWeight: Float = 1f,
     val isSpecial: Boolean = false,
-    val keyType: KeyType = KeyType.CHARACTER
+    val keyType: KeyType = KeyType.CHARACTER,
+    val secondaryLabel: String? = null // Long-press character (shown as hint)
 )
 
 enum class KeyType {
@@ -35,46 +36,47 @@ object KeyboardLayouts {
     private fun ch(c: Char): Int = c.code
 
     val qwertyRow1 = listOf(
-        KeyDef("q", code = ch('q')),
-        KeyDef("w", code = ch('w')),
-        KeyDef("e", code = ch('e')),
-        KeyDef("r", code = ch('r')),
-        KeyDef("t", code = ch('t')),
-        KeyDef("y", code = ch('y')),
-        KeyDef("u", code = ch('u')),
-        KeyDef("i", code = ch('i')),
-        KeyDef("o", code = ch('o')),
-        KeyDef("p", code = ch('p')),
+        KeyDef("q", code = ch('q'), secondaryLabel = "1"),
+        KeyDef("w", code = ch('w'), secondaryLabel = "2"),
+        KeyDef("e", code = ch('e'), secondaryLabel = "3"),
+        KeyDef("r", code = ch('r'), secondaryLabel = "4"),
+        KeyDef("t", code = ch('t'), secondaryLabel = "5"),
+        KeyDef("y", code = ch('y'), secondaryLabel = "6"),
+        KeyDef("u", code = ch('u'), secondaryLabel = "7"),
+        KeyDef("i", code = ch('i'), secondaryLabel = "8"),
+        KeyDef("o", code = ch('o'), secondaryLabel = "9"),
+        KeyDef("p", code = ch('p'), secondaryLabel = "0"),
     )
 
     val qwertyRow2 = listOf(
-        KeyDef("a", code = ch('a')),
-        KeyDef("s", code = ch('s')),
-        KeyDef("d", code = ch('d')),
-        KeyDef("f", code = ch('f')),
-        KeyDef("g", code = ch('g')),
-        KeyDef("h", code = ch('h')),
-        KeyDef("j", code = ch('j')),
-        KeyDef("k", code = ch('k')),
-        KeyDef("l", code = ch('l')),
+        KeyDef("a", code = ch('a'), secondaryLabel = "@"),
+        KeyDef("s", code = ch('s'), secondaryLabel = "#"),
+        KeyDef("d", code = ch('d'), secondaryLabel = "$"),
+        KeyDef("f", code = ch('f'), secondaryLabel = "%"),
+        KeyDef("g", code = ch('g'), secondaryLabel = "&"),
+        KeyDef("h", code = ch('h'), secondaryLabel = "-"),
+        KeyDef("j", code = ch('j'), secondaryLabel = "+"),
+        KeyDef("k", code = ch('k'), secondaryLabel = "("),
+        KeyDef("l", code = ch('l'), secondaryLabel = ")"),
     )
 
     val qwertyRow3 = listOf(
         KeyDef("⇧", code = 0, keyType = KeyType.SHIFT, isSpecial = true, widthWeight = 1.5f),
-        KeyDef("z", code = ch('z')),
-        KeyDef("x", code = ch('x')),
-        KeyDef("c", code = ch('c')),
-        KeyDef("v", code = ch('v')),
-        KeyDef("b", code = ch('b')),
-        KeyDef("n", code = ch('n')),
-        KeyDef("m", code = ch('m')),
+        KeyDef("z", code = ch('z'), secondaryLabel = "*"),
+        KeyDef("x", code = ch('x'), secondaryLabel = "\""),
+        KeyDef("c", code = ch('c'), secondaryLabel = "'"),
+        KeyDef("v", code = ch('v'), secondaryLabel = ":"),
+        KeyDef("b", code = ch('b'), secondaryLabel = ";"),
+        KeyDef("n", code = ch('n'), secondaryLabel = "!"),
+        KeyDef("m", code = ch('m'), secondaryLabel = "?"),
         KeyDef("⌫", code = 0, keyType = KeyType.BACKSPACE, isSpecial = true, widthWeight = 1.5f),
     )
 
     val bottomRow = listOf(
-        KeyDef("123", code = 0, keyType = KeyType.SYMBOL_TOGGLE, isSpecial = true, widthWeight = 1.25f),
-        KeyDef("☺", code = 0, keyType = KeyType.EMOJI_TOGGLE, widthWeight = 1.05f),
-        KeyDef(" ", code = ch(' '), keyType = KeyType.SPACE, widthWeight = 4.8f),
+        KeyDef("123", code = 0, keyType = KeyType.SYMBOL_TOGGLE, isSpecial = true, widthWeight = 1.2f),
+        KeyDef(",", code = ch(','), widthWeight = 0.9f),
+        KeyDef("☺", code = 0, keyType = KeyType.EMOJI_TOGGLE, widthWeight = 0.9f),
+        KeyDef(" ", code = ch(' '), keyType = KeyType.SPACE, widthWeight = 4.1f),
         KeyDef(".", code = ch('.'), widthWeight = 0.9f),
         KeyDef("↵", code = 0, keyType = KeyType.ENTER, isSpecial = true, widthWeight = 1.35f),
     )

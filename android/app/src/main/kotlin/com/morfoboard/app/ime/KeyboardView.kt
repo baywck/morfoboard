@@ -207,89 +207,95 @@ class KeyboardView(
         val themeColors = settingsStore.currentThemeColors
         val cornerRadius = settingsStore.keyCornerRadiusDp
 
-        // Determine key type for styling
         val isAccent = key.keyType == KeyType.CHARACTER && accentLetters.contains(key.label.lowercase())
-        val isSecondary = key.keyType == KeyType.CHARACTER && secondaryLetters.contains(key.label.lowercase())
+        val isSecondaryStyle = key.keyType == KeyType.CHARACTER && secondaryLetters.contains(key.label.lowercase())
 
-        return Button(context).apply {
+        // Key background
+        val keyBg = when {
+            key.isSpecial -> createKeyBackground(themeColors.keyBgSpecial, themeColors.keyBgPressed, cornerRadius)
+            isAccent -> createKeyBackground(settingsStore.accentKeyBg, settingsStore.accentKeyBgPressed, cornerRadius)
+            isSecondaryStyle -> createKeyBackground(themeColors.keyBgSpecial, themeColors.keyBgPressed, cornerRadius)
+            else -> createKeyBackground(themeColors.keyBg, themeColors.keyBgPressed, cornerRadius)
+        }
+
+        // Text color
+        val isEmbossed = key.keyType == KeyType.SPACE || (!isAccent && !key.isSpecial)
+        val textColor = when {
+            isAccent -> settingsStore.accentTextColor
+            isEmbossed -> themeColors.textSecondary
+            key.isSpecial -> themeColors.textSecondary
+            else -> themeColors.textPrimary
+        }
+
+        // Use FrameLayout to overlay secondary hint
+        val container = android.widget.FrameLayout(context).apply {
             tag = key
-            val label = displayLabel(key)
-            text = if (key.keyType == KeyType.CHARACTER && key.code != 0) {
-                if (shiftState == ShiftState.OFF) label.lowercase() else label.uppercase()
-            } else {
-                label
-            }
-
-            // Hero key 'M' branding: slightly transparent
-            if (key.label.equals("m", ignoreCase = true)) {
-                alpha = 0.6f
-            }
-            
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            
-            // Dynamic background based on settings and theme
-            val keyBg = when {
-                key.isSpecial -> createKeyBackground(
-                    themeColors.keyBgSpecial,
-                    themeColors.keyBgPressed,
-                    cornerRadius
-                )
-                isAccent -> createKeyBackground(
-                    settingsStore.accentKeyBg,
-                    settingsStore.accentKeyBgPressed,
-                    cornerRadius
-                )
-                isSecondary -> createKeyBackground(
-                    themeColors.keyBgSpecial,
-                    themeColors.keyBgPressed,
-                    cornerRadius
-                )
-                else -> createKeyBackground(
-                    themeColors.keyBg,
-                    themeColors.keyBgPressed,
-                    cornerRadius
-                )
-            }
             background = keyBg
-
-            // Text color
-            val isEmbossed = key.keyType == KeyType.SPACE || (!isAccent && !key.isSpecial)
-            val textColor = when {
-                isAccent -> settingsStore.accentTextColor
-                isEmbossed -> themeColors.textSecondary
-                key.isSpecial -> themeColors.textSecondary
-                else -> themeColors.textPrimary
-            }
-            setTextColor(textColor)
-
-            if (isEmbossed && !isSecondary) {
-                alpha = 0.7f 
-            } else if (key.isSpecial) {
-                alpha = 0.85f
-            }
-
-            textSize = when (key.keyType) {
-                KeyType.SPACE -> 13f 
-                KeyType.SHIFT, KeyType.BACKSPACE, KeyType.ENTER, KeyType.LANGUAGE, KeyType.ACTION_AI -> 17f
-                KeyType.SYMBOL_TOGGLE, KeyType.SYMBOL_PAGE_TOGGLE -> 12f
-                else -> 16f
-            }
-            letterSpacing = if (key.keyType == KeyType.CHARACTER || key.keyType == KeyType.SPACE) 0.04f else 0.01f
-            gravity = Gravity.CENTER
-            isAllCaps = false
-
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, key.widthWeight).apply {
                 setMargins(dp(1), dp(1), dp(1), dp(1))
             }
-
-            setPadding(0, 0, 0, 0)
-            minimumWidth = 0
-            minimumHeight = 0
-            elevation = 0f
-            stateListAnimator = null
-
-            setOnTouchListener(KeyTouchListener(key, audioManager, onKeyAction))
         }
+
+        // Main label
+        val label = displayLabel(key)
+        val mainText = if (key.keyType == KeyType.CHARACTER && key.code != 0) {
+            if (shiftState == ShiftState.OFF) label.lowercase() else label.uppercase()
+        } else {
+            label
+        }
+
+        val mainLabel = TextView(context).apply {
+            text = mainText
+            setTextColor(textColor)
+            textSize = when (key.keyType) {
+                KeyType.SPACE -> 13f
+                KeyType.SHIFT, KeyType.BACKSPACE, KeyType.ENTER, KeyType.LANGUAGE, KeyType.ACTION_AI -> 17f
+                KeyType.SYMBOL_TOGGLE, KeyType.SYMBOL_PAGE_TOGGLE -> 12f
+                KeyType.EMOJI_TOGGLE -> 18f
+                else -> 16f
+            }
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            letterSpacing = if (key.keyType == KeyType.CHARACTER || key.keyType == KeyType.SPACE) 0.04f else 0.01f
+            gravity = Gravity.CENTER
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+            )
+
+            if (key.label.equals("m", ignoreCase = true)) {
+                alpha = 0.6f
+            } else if (isEmbossed && !isSecondaryStyle) {
+                alpha = 0.7f
+            } else if (key.isSpecial) {
+                alpha = 0.85f
+            }
+        }
+        container.addView(mainLabel)
+
+        // Secondary hint label (top-right corner)
+        if (key.secondaryLabel != null) {
+            val hintLabel = TextView(context).apply {
+                text = key.secondaryLabel
+                setTextColor(themeColors.textMuted)
+                textSize = 9f
+                typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+                gravity = Gravity.CENTER
+                layoutParams = android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP or Gravity.END
+                ).apply {
+                    setMargins(0, dp(2), dp(4), 0)
+                }
+            }
+            container.addView(hintLabel)
+        }
+
+        // Touch handling
+        container.setOnTouchListener(KeyTouchListener(key, audioManager, onKeyAction))
+        container.isClickable = true
+
+        return container
     }
 
     /**
@@ -321,14 +327,16 @@ class KeyboardView(
         shiftState = state
         
         // Use direct text updates for better performance during shift toggling
-        if (!isSymbolMode) {
+        if (!isSymbolMode && !isEmojiMode) {
             for (i in 0 until childCount) {
                 val row = getChildAt(i) as? LinearLayout ?: continue
                 for (j in 0 until row.childCount) {
-                    val btn = row.getChildAt(j) as? Button ?: continue
-                    val key = btn.tag as? KeyDef ?: continue
+                    val container = row.getChildAt(j) as? android.widget.FrameLayout ?: continue
+                    val key = container.tag as? KeyDef ?: continue
                     if (key.keyType == KeyType.CHARACTER && key.code != 0) {
-                        btn.text = if (state == ShiftState.OFF) key.label.lowercase() else key.label.uppercase()
+                        // First child is the main label TextView
+                        val mainLabel = container.getChildAt(0) as? TextView ?: continue
+                        mainLabel.text = if (state == ShiftState.OFF) key.label.lowercase() else key.label.uppercase()
                     }
                 }
             }
@@ -373,7 +381,7 @@ class KeyboardView(
 }
 
 /**
- * Handles key press with haptic feedback and sound feedback.
+ * Handles key press with haptic feedback, sound feedback, and long-press for secondary characters.
  */
 class KeyTouchListener(
     private val key: KeyDef,
@@ -382,7 +390,9 @@ class KeyTouchListener(
 ) : View.OnTouchListener {
 
     private var isHolding = false
+    private var longPressTriggered = false
     private val handler = Handler(Looper.getMainLooper())
+    
     private val repeatRunnable = object : Runnable {
         override fun run() {
             if (isHolding) {
@@ -392,25 +402,49 @@ class KeyTouchListener(
         }
     }
 
+    private val longPressRunnable = Runnable {
+        if (key.secondaryLabel != null && !longPressTriggered) {
+            longPressTriggered = true
+            // Emit the secondary character
+            val secondaryKey = KeyDef(key.secondaryLabel, code = 0, keyType = KeyType.CHARACTER)
+            onKeyAction(secondaryKey)
+        }
+    }
+
     override fun onTouch(v: View, event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 v.isPressed = true
+                longPressTriggered = false
                 v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, -1f)
-                onKeyAction(key)
                 
                 if (key.keyType == KeyType.BACKSPACE) {
+                    // Backspace: immediate action + repeat on hold
+                    onKeyAction(key)
                     isHolding = true
                     handler.postDelayed(repeatRunnable, 400)
+                } else if (key.secondaryLabel != null) {
+                    // Has secondary: short tap = primary, long press = secondary
+                    // Don't emit primary yet — wait to see if it's a long press
+                    handler.postDelayed(longPressRunnable, 300)
+                } else {
+                    // Normal key: immediate action
+                    onKeyAction(key)
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 v.isPressed = false
+                handler.removeCallbacks(longPressRunnable)
+                
                 if (key.keyType == KeyType.BACKSPACE) {
                     isHolding = false
                     handler.removeCallbacks(repeatRunnable)
+                } else if (key.secondaryLabel != null && !longPressTriggered) {
+                    // Short tap — emit primary character
+                    onKeyAction(key)
                 }
+                longPressTriggered = false
             }
         }
         return true
