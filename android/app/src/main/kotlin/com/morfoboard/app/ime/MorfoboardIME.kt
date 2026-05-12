@@ -57,8 +57,16 @@ class MorfoboardIME : InputMethodService() {
     private var shiftState = ShiftState.OFF
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     
-    // Cached regex for auto-caps detection (avoid recompilation per keystroke)
+    // Cached regex for auto-caps detection
     private val autoCapsRegex = Regex(".*[.?!]\\s+$")
+    
+    // Debounce handler for action bar state updates (avoid IPC spam)
+    private val actionBarHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var actionBarUpdatePending = false
+    private val actionBarUpdateRunnable = Runnable {
+        actionBarUpdatePending = false
+        performActionBarUpdate()
+    }
 
     // ─────────────────────────────────────────────
     // Lifecycle
@@ -213,10 +221,11 @@ class MorfoboardIME : InputMethodService() {
         scope.cancel()
     }
 
+    // Track settings state to avoid unnecessary re-renders
+    private var lastSettingsHash = 0
+
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        // Re-apply keyboard height and re-render keys every time keyboard appears
-        // This ensures settings changes (size, color, shape, theme) take effect immediately
         if (::keyboardView.isInitialized) {
             val newHeight = calculateKeyboardHeight()
             val params = keyboardView.layoutParams
@@ -224,21 +233,26 @@ class MorfoboardIME : InputMethodService() {
                 params.height = newHeight
                 keyboardView.layoutParams = params
             }
-            // Re-render to pick up color/shape/theme changes
-            keyboardView.renderLayout()
             
-            // Update navigation bar color for theme
-            val themeColors = settingsStore.currentThemeColors
-            window?.window?.navigationBarColor = themeColors.keyboardBg
+            // Only re-render if settings actually changed
+            val currentHash = settingsStore.run {
+                (accentColor + theme + keyShape + keyboardSize).hashCode()
+            }
+            if (currentHash != lastSettingsHash) {
+                lastSettingsHash = currentHash
+                keyboardView.renderLayout()
+                val themeColors = settingsStore.currentThemeColors
+                window?.window?.navigationBarColor = themeColors.keyboardBg
+            }
         }
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         if (::actionBarCtrl.isInitialized) {
-            updateActionBarState()
+            performActionBarUpdate()
         }
-        updateAutoCaps()
+        performAutoCapsCheck()
     }
 
     override fun onUpdateSelection(
@@ -250,10 +264,19 @@ class MorfoboardIME : InputMethodService() {
         if (::actionBarCtrl.isInitialized) {
             updateActionBarState()
         }
-        updateAutoCaps()
+        performAutoCapsCheck()
     }
 
     private fun updateAutoCaps() {
+        if (shiftState == ShiftState.LOCKED) return
+        // Skip auto-caps check during active typing to reduce IPC overhead
+        // It will be called again via onUpdateSelection when cursor settles
+    }
+
+    /**
+     * Full auto-caps check — only called from onUpdateSelection (not per keystroke)
+     */
+    private fun performAutoCapsCheck() {
         if (shiftState == ShiftState.LOCKED) return
         val ic = currentInputConnection ?: return
         val textBefore = ic.getTextBeforeCursor(3, 0) ?: ""
@@ -529,15 +552,19 @@ class MorfoboardIME : InputMethodService() {
     }
 
     private fun updateActionBarState() {
-        val ic = currentInputConnection
-        val hasText = if (ic != null) {
-            val textBefore = ic.getTextBeforeCursor(100, 0) ?: ""
-            val textAfter = ic.getTextAfterCursor(100, 0) ?: ""
-            val selected = ic.getSelectedText(0) ?: ""
-            textBefore.isNotEmpty() || textAfter.isNotEmpty() || selected.isNotEmpty()
-        } else {
-            false
+        // Debounce: only check after 150ms of inactivity to avoid IPC spam during fast typing
+        if (!actionBarUpdatePending) {
+            actionBarUpdatePending = true
+            actionBarHandler.removeCallbacks(actionBarUpdateRunnable)
+            actionBarHandler.postDelayed(actionBarUpdateRunnable, 150)
         }
+    }
+
+    private fun performActionBarUpdate() {
+        val ic = currentInputConnection ?: return
+        // Single IPC call instead of 3
+        val textBefore = ic.getTextBeforeCursor(1, 0) ?: ""
+        val hasText = textBefore.isNotEmpty()
         actionBarCtrl.setTextState(hasText)
     }
 
