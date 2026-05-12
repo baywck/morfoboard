@@ -274,9 +274,11 @@ class KeyboardView(
 
         // Secondary hint label (top-right corner)
         if (key.secondaryLabel != null) {
+            // Use accent text color for NOAFR keys, muted for others
+            val hintColor = if (isAccent) settingsStore.accentTextColor else themeColors.textMuted
             val hintLabel = TextView(context).apply {
                 text = key.secondaryLabel
-                setTextColor(themeColors.textMuted)
+                setTextColor(hintColor)
                 textSize = 9f
                 typeface = Typeface.create("sans-serif", Typeface.NORMAL)
                 gravity = Gravity.CENTER
