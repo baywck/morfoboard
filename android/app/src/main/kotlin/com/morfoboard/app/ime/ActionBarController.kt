@@ -32,8 +32,9 @@ class ActionBarController(
 
     val view: LinearLayout = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
-        setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        setPadding(dp(12), dp(8), dp(12), dp(8))
+        setBackgroundColor(settingsStore.currentThemeColors.keyboardBg)
+        // Compact toolbar with balanced outer breathing room.
+        setPadding(dp(4), dp(4), dp(4), dp(1))
         gravity = Gravity.CENTER_VERTICAL
         visibility = View.VISIBLE
     }
@@ -59,8 +60,12 @@ class ActionBarController(
         view.removeAllViews()
 
         if (isLoggedIn()) {
-            translateBtn = createActionButton("✦", "Translate", false) { onTranslate() }
-            fixTextBtn = createActionButton("✧", "Fix Text", false) { onFixText() }
+            translateBtn = createActionButton("✦", "Translate", false) { onTranslate() }.apply {
+                layoutParams = LinearLayout.LayoutParams(0, dp(32), 1f).apply { marginEnd = dp(3) }
+            }
+            fixTextBtn = createActionButton("✧", "Fix Text", false) { onFixText() }.apply {
+                layoutParams = LinearLayout.LayoutParams(0, dp(32), 1f).apply { marginEnd = dp(3) }
+            }
             view.addView(translateBtn)
             view.addView(fixTextBtn)
         } else {
@@ -159,17 +164,19 @@ class ActionBarController(
                 if (primary) {
                     setColor(themeColors.textPrimary)
                 } else {
-                    setColor(if (settingsStore.isDarkTheme) 0xFF181B1E.toInt() else 0xFFE0E4E8.toInt())
+                    // Match regular keyboard keys, while the toolbar itself matches keyboardBg.
+                    setColor(themeColors.keyBg)
+                    setStroke(dp(1), themeColors.keyBgPressed)
                 }
-                cornerRadius = dp(6).toFloat()
+                cornerRadius = dp(settingsStore.keyCornerRadiusDp.toInt()).toFloat()
             }
             background = bgDrawable
             setPadding(dp(10), 0, dp(10), 0)
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                dp(28)
-            ).apply { marginEnd = dp(8) }
+                dp(32)
+            ).apply { marginEnd = dp(6) }
 
             val iconView = TextView(view.context).apply {
                 text = icon
@@ -194,6 +201,12 @@ class ActionBarController(
     }
 
     fun refreshAuthState() = rebuild()
+
+    /** Re-reads theme colors and rebuilds the bar. Call after a theme change. */
+    fun applyTheme() {
+        view.setBackgroundColor(settingsStore.currentThemeColors.keyboardBg)
+        rebuild()
+    }
 
     fun setTextState(hasText: Boolean) {
         this.hasText = hasText

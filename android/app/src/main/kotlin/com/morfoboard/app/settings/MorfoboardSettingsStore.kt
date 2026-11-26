@@ -42,7 +42,7 @@ class MorfoboardSettingsStore(context: Context) {
 
     /** Key shape: "rounded", "semi", "square" */
     var keyShape: String
-        get() = prefs.getString(KEY_KEY_SHAPE, "rounded") ?: "rounded"
+        get() = prefs.getString(KEY_KEY_SHAPE, "semi") ?: "semi"
         set(value) = prefs.edit().putString(KEY_KEY_SHAPE, value).apply()
 
     /** Theme: "dark", "light" */

@@ -40,5 +40,6 @@ sealed class AIException(message: String, cause: Throwable? = null) : Exception(
     class AiUnavailable : AIException("AI service is temporarily unavailable")
     class Timeout : AIException("Request timed out. Please try again.")
     class ServerError(msg: String) : AIException(msg)
+    class InvalidResponse(msg: String) : AIException(msg)
     class Unknown(msg: String) : AIException(msg)
 }

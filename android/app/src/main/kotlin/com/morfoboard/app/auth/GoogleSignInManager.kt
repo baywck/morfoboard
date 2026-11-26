@@ -19,8 +19,11 @@ class GoogleSignInManager(private val context: Context) {
     companion object {
         private const val TAG = "GoogleSignInManager"
         const val RC_SIGN_IN = 9001
-        // TODO: Replace with actual Web Client ID from Google Cloud Console
         private const val WEB_CLIENT_ID = "729038565292-vjj9dde5na8tasbgrs2do9h2m9s3n8j6.apps.googleusercontent.com"
+        private const val DEVELOPER_ERROR = 10
+        private const val SIGN_IN_CANCELLED = 12501
+        private const val SIGN_IN_FAILED = 12500
+        private const val NETWORK_ERROR = 7
     }
 
     private val gso: GoogleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -69,7 +72,17 @@ class GoogleSignInManager(private val context: Context) {
             }
         } catch (e: ApiException) {
             Log.e(TAG, "Sign-in failed with code: ${e.statusCode}", e)
-            SignInResult.Failure("Sign-in failed (${e.statusCode}): ${e.message}")
+            SignInResult.Failure(messageForStatus(e.statusCode))
+        }
+    }
+
+    private fun messageForStatus(statusCode: Int): String {
+        return when (statusCode) {
+            DEVELOPER_ERROR -> "Google Sign-In configuration does not match this APK signature (error 10)."
+            SIGN_IN_CANCELLED -> "Google Sign-In was cancelled."
+            SIGN_IN_FAILED -> "Google could not complete sign-in. Check the OAuth consent screen and test users."
+            NETWORK_ERROR -> "Google Sign-In could not reach Google. Check your internet connection."
+            else -> "Google Sign-In failed (error $statusCode)."
         }
     }
 

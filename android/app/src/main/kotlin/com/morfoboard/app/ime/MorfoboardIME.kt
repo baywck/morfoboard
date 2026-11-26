@@ -5,20 +5,23 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
+import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.morfoboard.app.MainActivity
 import com.morfoboard.app.R
 import com.morfoboard.app.ai.AIAction
@@ -37,11 +40,19 @@ class MorfoboardIME : InputMethodService() {
 
     companion object {
         private const val TAG = "MorfoboardIME"
-        // Production server IP
-        private const val DEFAULT_BASE_URL = "http://43.156.68.104:8080"
+        // Production endpoint. The backend currently exposes plain HTTP only;
+        // migrate this to HTTPS before handling sensitive text in production.
+        private const val PRODUCTION_BASE_URL = "http://43.156.68.104:8080"
+        // Local mirror window of text before the cursor. Big enough for the
+        // auto-caps regex and to amortize backspace bursts between IPC refills.
+        private const val LOCAL_TEXT_WINDOW = 32
+        // onUpdateSelection echoes of our own commits arrive within this window;
+        // anything later is treated as a real cursor move and pays an IPC resync.
+        private const val SELF_EDIT_WINDOW_MS = 150L
     }
 
     private lateinit var rootLayout: FrameLayout
+    private lateinit var mainLayout: LinearLayout
     private lateinit var keyboardView: KeyboardView
     private lateinit var actionBarCtrl: ActionBarController
     private lateinit var bottomSheetPresenter: BottomSheetPresenter
@@ -60,13 +71,18 @@ class MorfoboardIME : InputMethodService() {
     // Cached regex for auto-caps detection
     private val autoCapsRegex = Regex(".*[.?!]\\s+$")
     
-    // Debounce handler for action bar state updates (avoid IPC spam)
-    private val actionBarHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private var actionBarUpdatePending = false
-    private val actionBarUpdateRunnable = Runnable {
-        actionBarUpdatePending = false
-        performActionBarUpdate()
-    }
+    private var editorHasText = false
+    private var activeAIAction: String? = null
+
+    // Mirror of up to LOCAL_TEXT_WINDOW chars before the cursor. Every
+    // per-keystroke decision (auto-caps, has-text) reads this instead of doing
+    // a blocking InputConnection round-trip on the UI thread — that IPC was the
+    // main source of typing lag at high speed.
+    private val localTextBefore = StringBuilder()
+    private var localTextComplete = false // mirror reaches the start of the field
+    private var hasTextAfter = false
+    private var hasSelection = false
+    private var lastSelfEditUptime = 0L
 
     // ─────────────────────────────────────────────
     // Lifecycle
@@ -78,7 +94,7 @@ class MorfoboardIME : InputMethodService() {
         settingsStore = MorfoboardSettingsStore(this)
         authManager = AuthManager(this)
         aiClient = AIClient(
-            baseUrl = DEFAULT_BASE_URL,
+            baseUrl = PRODUCTION_BASE_URL,
             tokenProvider = authManager.getTokenProvider()
         )
         connectivityMonitor = ConnectivityMonitor(this)
@@ -128,7 +144,9 @@ class MorfoboardIME : InputMethodService() {
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (!matches.isNullOrEmpty()) {
                         val text = matches[0] + " "
-                        currentInputConnection?.commitText(text, 1)
+                        if (currentInputConnection?.commitText(text, 1) == true) {
+                            onTextCommitted(text)
+                        }
                     }
                 }
                 override fun onPartialResults(partialResults: Bundle?) {}
@@ -140,14 +158,16 @@ class MorfoboardIME : InputMethodService() {
     override fun onCreateInputView(): View {
         Log.d(TAG, "onCreateInputView")
         
-        // Sync navigation bar color with keyboard theme
         val themeColors = settingsStore.currentThemeColors
-        window?.window?.navigationBarColor = themeColors.keyboardBg
+        configureImeNavigationBar(themeColors.keyboardBg, settingsStore.isDarkTheme)
 
         rootLayout = FrameLayout(this)
 
-        val mainLayout = LinearLayout(this).apply {
+        mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            // Painted keyboardBg so the navigation-inset padding band below the
+            // keys reads as part of the keyboard, never as a black gap.
+            setBackgroundColor(themeColors.keyboardBg)
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
@@ -176,26 +196,42 @@ class MorfoboardIME : InputMethodService() {
         mainLayout.addView(keyboardView)
 
         rootLayout.addView(mainLayout)
-        
-        // Apply window insets to add bottom padding for devices where the system
-        // IME navigation overlaps with our keyboard (e.g. Vivo, some Samsung)
-        ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            val bottomInset = maxOf(systemBars.bottom, navBars.bottom)
-            
-            // Only apply padding if the system is actually overlapping our view
-            mainLayout.setPadding(0, 0, 0, bottomInset)
-            
-            Log.d(TAG, "WindowInsets applied - bottom: ${bottomInset}px")
-            WindowInsetsCompat.CONSUMED
+
+        // Pad by the exact navigation-bar inset: the system centers the gesture
+        // pill inside that band, so matching it exactly is what keeps the
+        // handle/edge spacing symmetric (clamping the padding clips the band and
+        // makes it look lopsided). The band is painted keyboardBg by mainLayout,
+        // so it reads as keyboard surface, not a gap. Zero in 3-button mode,
+        // where the IME window already sits above the navigation bar.
+        ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { _, insets ->
+            val bottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            if (mainLayout.paddingBottom != bottom) {
+                mainLayout.setPadding(0, 0, 0, bottom)
+            }
+            insets
         }
+        ViewCompat.requestApplyInsets(rootLayout)
 
         // Bottom sheet presenter
         bottomSheetPresenter = BottomSheetPresenter(this, rootLayout)
 
         Log.d(TAG, "onCreateInputView complete - keyboard: ${keyboardHeight}px")
         return rootLayout
+    }
+
+    @Suppress("DEPRECATION")
+    private fun configureImeNavigationBar(keyboardColor: Int, isDarkTheme: Boolean) {
+        val imeWindow = window?.window ?: return
+        imeWindow.navigationBarColor = keyboardColor
+        // Prevent OEM contrast enforcement from replacing keyboardBg with a scrim.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            imeWindow.isNavigationBarContrastEnforced = false
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            imeWindow.navigationBarDividerColor = keyboardColor
+        }
+        WindowInsetsControllerCompat(imeWindow, imeWindow.decorView)
+            .isAppearanceLightNavigationBars = !isDarkTheme
     }
 
     /**
@@ -242,17 +278,16 @@ class MorfoboardIME : InputMethodService() {
                 lastSettingsHash = currentHash
                 keyboardView.renderLayout()
                 val themeColors = settingsStore.currentThemeColors
-                window?.window?.navigationBarColor = themeColors.keyboardBg
+                mainLayout.setBackgroundColor(themeColors.keyboardBg)
+                actionBarCtrl.applyTheme()
+                configureImeNavigationBar(themeColors.keyboardBg, settingsStore.isDarkTheme)
             }
         }
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
-        if (::actionBarCtrl.isInitialized) {
-            performActionBarUpdate()
-        }
-        performAutoCapsCheck()
+        resyncEditorState()
     }
 
     override fun onUpdateSelection(
@@ -261,30 +296,62 @@ class MorfoboardIME : InputMethodService() {
         candidatesStart: Int, candidatesEnd: Int
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEndInt, candidatesStart, candidatesEnd)
-        if (::actionBarCtrl.isInitialized) {
-            updateActionBarState()
+        hasSelection = newSelStart != newSelEndInt
+        val selectionMoved = oldSelStart != newSelStart || oldSelEnd != newSelEndInt
+        // Echoes of our own commits keep the mirror valid; only external cursor
+        // moves (tap elsewhere, app edits) pay the blocking resync IPC.
+        if (selectionMoved &&
+            SystemClock.uptimeMillis() - lastSelfEditUptime > SELF_EDIT_WINDOW_MS
+        ) {
+            resyncEditorState()
         }
-        performAutoCapsCheck()
-    }
-
-    private fun updateAutoCaps() {
-        if (shiftState == ShiftState.LOCKED) return
-        // Skip auto-caps check during active typing to reduce IPC overhead
-        // It will be called again via onUpdateSelection when cursor settles
     }
 
     /**
-     * Full auto-caps check — only called from onUpdateSelection (not per keystroke)
+     * One-shot IPC read of the editor state around the cursor. Called on field
+     * focus and on external cursor moves — never on the per-keystroke path.
      */
-    private fun performAutoCapsCheck() {
+    private fun resyncEditorState() {
+        val ic = currentInputConnection
+        localTextBefore.setLength(0)
+        if (ic == null) {
+            localTextComplete = true
+            hasTextAfter = false
+            hasSelection = false
+        } else {
+            refillLocalTextBefore(ic)
+            hasTextAfter = !ic.getTextAfterCursor(1, 0).isNullOrEmpty()
+            hasSelection = !ic.getSelectedText(0).isNullOrEmpty()
+        }
+        setEditorHasText(localTextBefore.isNotEmpty() || hasTextAfter || hasSelection)
+        updateAutoCaps()
+    }
+
+    private fun refillLocalTextBefore(ic: InputConnection) {
+        val before = ic.getTextBeforeCursor(LOCAL_TEXT_WINDOW, 0) ?: ""
+        localTextBefore.setLength(0)
+        localTextBefore.append(before)
+        localTextComplete = before.length < LOCAL_TEXT_WINDOW
+    }
+
+    /** Mirror bookkeeping after our own commitText — no IPC. */
+    private fun onTextCommitted(text: String) {
+        localTextBefore.append(text)
+        if (localTextBefore.length > LOCAL_TEXT_WINDOW) {
+            localTextBefore.delete(0, localTextBefore.length - LOCAL_TEXT_WINDOW)
+            localTextComplete = false
+        }
+        lastSelfEditUptime = SystemClock.uptimeMillis()
+        setEditorHasText(true)
+        updateAutoCaps()
+    }
+
+    /** Auto-caps computed from the local mirror — no IPC. */
+    private fun updateAutoCaps() {
         if (shiftState == ShiftState.LOCKED) return
-        val ic = currentInputConnection ?: return
-        val textBefore = ic.getTextBeforeCursor(3, 0) ?: ""
-        
-        val shouldCaps = textBefore.isEmpty() || 
-                         textBefore.endsWith("\n") || 
-                         textBefore.matches(autoCapsRegex)
-                         
+        val shouldCaps = (localTextBefore.isEmpty() && localTextComplete) ||
+            localTextBefore.endsWith("\n") ||
+            autoCapsRegex.matches(localTextBefore)
         val newState = if (shouldCaps) ShiftState.SINGLE else ShiftState.OFF
         if (shiftState != newState) {
             shiftState = newState
@@ -309,11 +376,8 @@ class MorfoboardIME : InputMethodService() {
                     key.label.lowercase()
                 }
                 ic.commitText(char, 1)
-
-                if (shiftState == ShiftState.SINGLE) {
-                    shiftState = ShiftState.OFF
-                    keyboardView.updateShiftState(shiftState)
-                }
+                // Also drops SINGLE shift back to OFF via the mirror.
+                onTextCommitted(char)
             }
 
             KeyType.SHIFT -> {
@@ -326,11 +390,29 @@ class MorfoboardIME : InputMethodService() {
             }
 
             KeyType.BACKSPACE -> {
-                val selected = ic.getSelectedText(0)
-                if (selected.isNullOrEmpty()) {
-                    ic.deleteSurroundingText(1, 0)
+                if (hasSelection) {
+                    // Rare path: verify before a destructive delete, then resync
+                    // because the mirror can't know what the selection covered.
+                    val selected = ic.getSelectedText(0)
+                    if (selected.isNullOrEmpty()) {
+                        ic.deleteSurroundingText(1, 0)
+                    } else {
+                        ic.commitText("", 0)
+                    }
+                    resyncEditorState()
                 } else {
-                    ic.commitText("", 0)
+                    // Hot path (incl. 20/s key repeat): zero IPC. The mirror is
+                    // refilled only when a delete burst exhausts its window.
+                    ic.deleteSurroundingText(1, 0)
+                    if (localTextBefore.isNotEmpty()) {
+                        localTextBefore.deleteCharAt(localTextBefore.length - 1)
+                    }
+                    if (localTextBefore.isEmpty() && !localTextComplete) {
+                        refillLocalTextBefore(ic)
+                    }
+                    lastSelfEditUptime = SystemClock.uptimeMillis()
+                    setEditorHasText(localTextBefore.isNotEmpty() || hasTextAfter)
+                    updateAutoCaps()
                 }
             }
 
@@ -347,17 +429,22 @@ class MorfoboardIME : InputMethodService() {
                 // If single-line with an action (Send, Search, Go, etc.), perform that action
                 if (isMultiLine) {
                     ic.commitText("\n", 1)
+                    onTextCommitted("\n")
                 } else if (action != EditorInfo.IME_ACTION_UNSPECIFIED &&
                     action != EditorInfo.IME_ACTION_NONE
                 ) {
+                    // App may clear the field; the resulting selection change
+                    // arrives outside the self-edit window and triggers a resync.
                     ic.performEditorAction(action)
                 } else {
                     ic.commitText("\n", 1)
+                    onTextCommitted("\n")
                 }
             }
 
             KeyType.SPACE -> {
                 ic.commitText(" ", 1)
+                onTextCommitted(" ")
             }
 
             KeyType.SYMBOL_TOGGLE -> {
@@ -381,7 +468,6 @@ class MorfoboardIME : InputMethodService() {
             }
         }
 
-        updateActionBarState()
     }
 
     // ─────────────────────────────────────────────
@@ -436,7 +522,8 @@ class MorfoboardIME : InputMethodService() {
             return
         }
 
-        Log.d(TAG, "Translate: ${text.take(50)}...")
+        activeAIAction = AIAction.TRANSLATE.apiValue
+        Log.d(TAG, "Translate requested (${text.length} chars)")
         actionBarCtrl.setLoading(true)
 
         scope.launch {
@@ -449,6 +536,16 @@ class MorfoboardIME : InputMethodService() {
                 )
 
                 result.onSuccess { response ->
+                    val expectedAction = AIAction.TRANSLATE.apiValue
+                    if (activeAIAction != expectedAction || response.action != expectedAction) {
+                        handleAIError(
+                            AIException.InvalidResponse(
+                                "Expected $expectedAction response, received ${response.action}"
+                            )
+                        )
+                        return@onSuccess
+                    }
+                    activeAIAction = null
                     actionBarCtrl.setLoading(false)
                     if (response.success && response.result != null) {
                         val targetLang = settingsStore.targetLanguage
@@ -483,7 +580,8 @@ class MorfoboardIME : InputMethodService() {
             return
         }
 
-        Log.d(TAG, "Fix Text: ${text.take(50)}...")
+        activeAIAction = AIAction.FIX_TEXT.apiValue
+        Log.d(TAG, "Fix text requested (${text.length} chars)")
         actionBarCtrl.setLoading(true)
 
         scope.launch {
@@ -494,6 +592,16 @@ class MorfoboardIME : InputMethodService() {
                 )
 
                 result.onSuccess { response ->
+                    val expectedAction = AIAction.FIX_TEXT.apiValue
+                    if (activeAIAction != expectedAction || response.action != expectedAction) {
+                        handleAIError(
+                            AIException.InvalidResponse(
+                                "Expected $expectedAction response, received ${response.action}"
+                            )
+                        )
+                        return@onSuccess
+                    }
+                    activeAIAction = null
                     actionBarCtrl.setLoading(false)
                     if (response.success && response.result != null) {
                         bottomSheetPresenter.show(
@@ -549,26 +657,27 @@ class MorfoboardIME : InputMethodService() {
         ic.deleteSurroundingText(10000, 10000)
         ic.commitText(newText, 1)
         ic.endBatchEdit()
+
+        localTextBefore.setLength(0)
+        localTextBefore.append(newText.takeLast(LOCAL_TEXT_WINDOW))
+        localTextComplete = newText.length <= LOCAL_TEXT_WINDOW
+        hasTextAfter = false
+        hasSelection = false
+        lastSelfEditUptime = SystemClock.uptimeMillis()
+        setEditorHasText(newText.isNotEmpty())
+        updateAutoCaps()
     }
 
-    private fun updateActionBarState() {
-        // Debounce: only check after 150ms of inactivity to avoid IPC spam during fast typing
-        if (!actionBarUpdatePending) {
-            actionBarUpdatePending = true
-            actionBarHandler.removeCallbacks(actionBarUpdateRunnable)
-            actionBarHandler.postDelayed(actionBarUpdateRunnable, 150)
+    private fun setEditorHasText(hasText: Boolean) {
+        if (editorHasText == hasText) return
+        editorHasText = hasText
+        if (::actionBarCtrl.isInitialized) {
+            actionBarCtrl.setTextState(hasText)
         }
     }
 
-    private fun performActionBarUpdate() {
-        val ic = currentInputConnection ?: return
-        // Single IPC call instead of 3
-        val textBefore = ic.getTextBeforeCursor(1, 0) ?: ""
-        val hasText = textBefore.isNotEmpty()
-        actionBarCtrl.setTextState(hasText)
-    }
-
     private fun handleAIError(error: Throwable) {
+        activeAIAction = null
         actionBarCtrl.setLoading(false)
         val message = when (error) {
             is AIException.NetworkError -> getString(R.string.ai_unavailable)

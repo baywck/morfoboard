@@ -15,6 +15,17 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            // Keep debug APK identity stable across machines so the SHA-1 registered
+            // in Google Cloud continues to match locally rebuilt APKs.
+            storeFile = rootProject.file("morfoboard-debug.keystore")
+            storePassword = "android"
+            keyAlias = "morfoboard-debug"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

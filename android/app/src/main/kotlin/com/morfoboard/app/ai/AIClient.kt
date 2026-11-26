@@ -25,14 +25,16 @@ class AIClient(
         private const val TAG = "AIClient"
         private const val TIMEOUT_SECONDS = 35L
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        private val SHARED_CLIENT: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
     }
 
     private val gson = Gson()
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val client = SHARED_CLIENT
 
     /**
      * Process text with AI (translate, fix, or custom action).
